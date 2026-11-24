@@ -8,6 +8,11 @@ import {
   serializePortalForCache,
   validateGifDataUrl,
 } from './portalCache';
+import {
+  buildChunkedImageSettingsPayload,
+  IMAGE_CHUNK_SIZE,
+  resolveImageFromSettings,
+} from './imageChunking';
 import { normalizePortalResponse } from './queueLogic';
 
 test('buildThemeVarsMap exports both portal tokens and generic CSS variable aliases', () => {
@@ -46,11 +51,13 @@ test('serializePortalForCache round-trips through normalizePortalResponse preser
   assert.equal(restored.reviews.length, 1);
 });
 
-test('validateGifDataUrl accepts GIFs <= 48,000 chars and rejects oversized GIFs with exact Thai message', () => {
-  const smallGif = 'data:image/gif;base64,' + 'A'.repeat(1000);
-  assert.deepEqual(validateGifDataUrl(smallGif), { valid: true });
+test('validateGifDataUrl accepts GIFs up to 700,000 chars (500 KB) and rejects oversized GIFs with exact Thai message', () => {
+  const mediumGif = 'data:image/gif;base64,' + 'A'.repeat(250_000);
+  assert.deepEqual(validateGifDataUrl(mediumGif), { valid: true });
 
-  const exactLimitGif = 'data:image/gif;base64,' + 'A'.repeat(MAX_GIF_BASE64_LENGTH - 'data:image/gif;base64,'.length);
+  const exactLimitGif =
+    'data:image/gif;base64,' +
+    'A'.repeat(MAX_GIF_BASE64_LENGTH - 'data:image/gif;base64,'.length);
   assert.equal(exactLimitGif.length, MAX_GIF_BASE64_LENGTH);
   assert.deepEqual(validateGifDataUrl(exactLimitGif), { valid: true });
 
@@ -58,6 +65,73 @@ test('validateGifDataUrl accepts GIFs <= 48,000 chars and rejects oversized GIFs
   const res = validateGifDataUrl(tooLargeGif);
   assert.equal(res.valid, false);
   if (!res.valid) {
+    assert.equal(res.error, 'ไฟล์ GIF ใหญ่เกินไป กรุณาใช้ไฟล์ขนาดไม่เกิน 500 KB');
     assert.equal(res.error, GIF_TOO_LARGE_MESSAGE);
   }
+});
+
+test('buildChunkedImageSettingsPayload keeps <= 40,000 chars in main key with _count: 0 and chunks > 40,000 chars cleanly', () => {
+  // Empty / clear
+  assert.deepEqual(buildChunkedImageSettingsPayload('img_avatar', ''), {
+    img_avatar: '',
+    img_avatar_count: 0,
+  });
+
+  // Small / <= 40,000 chars
+  const smallData = 'data:image/webp;base64,' + 'B'.repeat(12_000);
+  const smallPayload = buildChunkedImageSettingsPayload('img_cover', smallData);
+  assert.deepEqual(smallPayload, {
+    img_cover: smallData,
+    img_cover_count: 0,
+  });
+
+  // Large GIF > 40,000 chars (150,000 chars -> 4 chunks of 40k, 40k, 40k, 30k)
+  const prefix = 'data:image/gif;base64,';
+  const largeData = prefix + 'C'.repeat(150_000 - prefix.length);
+  const chunked = buildChunkedImageSettingsPayload('img_avatar', largeData);
+
+  assert.equal(chunked.img_avatar, '');
+  assert.equal(chunked.img_avatar_count, 4);
+  assert.equal(String(chunked.img_avatar_part_0).length, IMAGE_CHUNK_SIZE);
+  assert.equal(String(chunked.img_avatar_part_1).length, IMAGE_CHUNK_SIZE);
+  assert.equal(String(chunked.img_avatar_part_2).length, IMAGE_CHUNK_SIZE);
+  assert.equal(String(chunked.img_avatar_part_3).length, 30_000);
+  assert.equal(chunked.img_avatar_part_4, undefined);
+
+  // Reassembles identically
+  assert.equal(resolveImageFromSettings(chunked, 'img_avatar'), largeData);
+});
+
+test('resolveImageFromSettings & normalizePortalResponse reassemble chunked images (including stringified _count from Sheets)', () => {
+  const prefix = 'data:image/gif;base64,';
+  const gifA = prefix + 'X'.repeat(85_000 - prefix.length); // 3 parts
+  const gifB = prefix + 'Y'.repeat(50_000 - prefix.length); // 2 parts
+  const smallBanner = 'data:image/webp;base64,SMALLBANNER';
+
+  const avatarChunks = buildChunkedImageSettingsPayload('img_avatar', gifA);
+  const portfolioChunks = buildChunkedImageSettingsPayload('img_portfolio_3', gifB);
+
+  // Simulate Google Sheets returning numeric counts as strings
+  const sheetSettings: Record<string, unknown> = {
+    ...avatarChunks,
+    img_avatar_count: String(avatarChunks.img_avatar_count),
+    ...portfolioChunks,
+    img_banner: smallBanner,
+    img_banner_count: '0',
+  };
+
+  assert.equal(resolveImageFromSettings(sheetSettings, 'img_avatar'), gifA);
+  assert.equal(resolveImageFromSettings(sheetSettings, 'img_portfolio_3'), gifB);
+  assert.equal(resolveImageFromSettings(sheetSettings, 'img_banner'), smallBanner);
+  assert.equal(resolveImageFromSettings(sheetSettings, 'img_icon'), '');
+
+  const normalized = normalizePortalResponse({
+    settings: sheetSettings,
+    queues: [],
+    reviews: [],
+  });
+  assert.equal(normalized.images.img_avatar, gifA);
+  assert.equal(normalized.images.img_portfolio_3, gifB);
+  assert.equal(normalized.images.img_banner, smallBanner);
+  assert.equal(normalized.images.img_icon, undefined);
 });

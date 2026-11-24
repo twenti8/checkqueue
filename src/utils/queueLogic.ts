@@ -17,6 +17,9 @@ import type {
   ReviewItem,
   WorkStatus,
 } from '../types/portal';
+import { resolveImageFromSettings } from './imageChunking';
+
+export { resolveImageFromSettings };
 
 export interface RevenueSummary {
   totalRevenue: number;
@@ -258,9 +261,9 @@ export function normalizePortalResponse(raw: unknown): PortalData {
 
   const images: PortalImages = {};
   for (const slot of IMAGE_SLOT_CONFIG) {
-    const val = settings[slot.key];
-    if (typeof val === 'string' && val.trim().length > 0) {
-      images[slot.key as ImageSlotKey] = val.trim();
+    const resolved = resolveImageFromSettings(settings, slot.key);
+    if (resolved.length > 0) {
+      images[slot.key as ImageSlotKey] = resolved;
     }
   }
 

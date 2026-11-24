@@ -1,11 +1,12 @@
 import {
   GIF_TOO_LARGE_MESSAGE,
   MAX_GIF_BASE64_LENGTH,
+  MAX_GIF_FILE_BYTES,
   validateGifDataUrl,
 } from './portalCache';
 
 export const MAX_SHEET_BASE64_LENGTH = 25_000;
-export { GIF_TOO_LARGE_MESSAGE, MAX_GIF_BASE64_LENGTH };
+export { GIF_TOO_LARGE_MESSAGE, MAX_GIF_BASE64_LENGTH, MAX_GIF_FILE_BYTES };
 
 export interface CompressedImageResult {
   dataUrl: string;
@@ -52,9 +53,10 @@ function detectPreferredMime(canvas: HTMLCanvasElement): 'image/webp' | 'image/j
 }
 
 /**
- * Prepares an uploaded image for direct storage in a Google Sheets cell:
+ * Prepares an uploaded image for storage in Google Sheets:
  * - Animated GIF (`image/gif`): bypasses HTML5 Canvas completely via FileReader
- *   so frame animation is preserved, enforcing length <= 48,000 characters.
+ *   so frame animation is preserved, supporting up to 500 KB (<= 700,000 chars)
+ *   which is saved across 40,000-character chunks.
  * - Static images (JPEG/PNG/WebP): resizes via HTML5 Canvas and steps quality
  *   down by 0.1 until Base64 length is strictly < 25,000 characters.
  */
@@ -66,6 +68,9 @@ export async function compressImageForSheet(
     file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
 
   if (isGif) {
+    if (file.size > MAX_GIF_FILE_BYTES) {
+      throw new Error(GIF_TOO_LARGE_MESSAGE);
+    }
     const dataUrl = await readFileAsDataUrl(file);
     const check = validateGifDataUrl(dataUrl);
     if (!check.valid) {

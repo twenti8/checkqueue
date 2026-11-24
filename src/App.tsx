@@ -33,6 +33,7 @@ import {
   readPortalCache,
   writePortalCache,
 } from './utils/portalCache';
+import { buildChunkedImageSettingsPayload } from './utils/imageChunking';
 
 const INITIAL_PORTAL_DATA: PortalData = {
   profile: DEFAULT_PROFILE,
@@ -269,9 +270,10 @@ export default function App() {
     }
   };
 
-  // Separate Image Slot Action (never merged into profile)
+  // Separate Image Slot Action with 40,000-char chunking for large GIFs (never merged into profile)
   const handleSaveImageSlot = async (key: ImageSlotKey, dataUrl: string) => {
-    await saveSettingsToSheet({ [key]: dataUrl });
+    const payload = buildChunkedImageSettingsPayload(key, dataUrl);
+    await saveSettingsToSheet(payload);
     commitPortalData((prev) => {
       const nextImages = { ...prev.images };
       if (dataUrl) {

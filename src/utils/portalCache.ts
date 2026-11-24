@@ -1,11 +1,14 @@
 import type { CustomThemeColors, PortalData } from '../types/portal';
+import {
+  GIF_TOO_LARGE_MESSAGE,
+  MAX_GIF_BASE64_LENGTH,
+  MAX_GIF_FILE_BYTES,
+} from './imageChunking';
 import { normalizePortalResponse, resolveActiveThemeColors } from './queueLogic';
 
 export const PORTAL_CACHE_KEY = 'kawaii_portal_cache';
 export const THEME_VARS_KEY = 'kawaii_theme_vars';
-export const MAX_GIF_BASE64_LENGTH = 48_000;
-export const GIF_TOO_LARGE_MESSAGE =
-  'ไฟล์ GIF มีขนาดใหญ่เกินไป (กรุณาใช้ไฟล์ขนาดไม่เกิน 35 KB เพื่อให้บันทึกบนระบบได้)';
+export { GIF_TOO_LARGE_MESSAGE, MAX_GIF_BASE64_LENGTH, MAX_GIF_FILE_BYTES };
 
 export function buildThemeVarsMap(colors: CustomThemeColors): Record<string, string> {
   return {
@@ -67,7 +70,22 @@ export function writePortalCache(data: PortalData): void {
     if (typeof localStorage === 'undefined') return;
     localStorage.setItem(PORTAL_CACHE_KEY, JSON.stringify(serializePortalForCache(data)));
   } catch {
-    // Ignore storage quota or private mode errors
+    // Fallback when multiple large chunked GIFs exceed localStorage quota (~5MB):
+    // still persist theme, profile, queues, reviews, and lightweight images for 0ms hydration.
+    try {
+      const compactImages: PortalData['images'] = {};
+      for (const [k, v] of Object.entries(data.images)) {
+        if (typeof v === 'string' && v.length <= 120_000) {
+          compactImages[k as keyof PortalData['images']] = v;
+        }
+      }
+      localStorage.setItem(
+        PORTAL_CACHE_KEY,
+        JSON.stringify(serializePortalForCache({ ...data, images: compactImages }))
+      );
+    } catch {
+      // Ignore private browsing or hard quota restrictions
+    }
   }
 }
 
