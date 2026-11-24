@@ -1,0 +1,139 @@
+@import "tailwindcss";
+
+:root {
+  --portal-bg: #FFF7FA;
+  --portal-surface: #FFFFFF;
+  --portal-surface-alt: #FFF0F5;
+  --portal-border: #F7D8E5;
+  --portal-primary: #E86A92;
+  --portal-secondary: #F7B2C8;
+  --portal-ink: #3C2330;
+  --portal-muted: #7B5A6B;
+  --font-display: 'Mitr', 'Noto Sans Thai', sans-serif;
+  --font-body: 'Noto Sans Thai', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background-color: var(--portal-bg);
+  color: var(--portal-ink);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pastel background keyframes (compositor-only: transform & opacity) */
+@keyframes kawaii-fall {
+  0% {
+    transform: translate3d(0, -10vh, 0) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.72;
+  }
+  88% {
+    opacity: 0.68;
+  }
+  100% {
+    transform: translate3d(42px, 110vh, 0) rotate(260deg);
+    opacity: 0;
+  }
+}
+
+@keyframes kawaii-rise {
+  0% {
+    transform: translate3d(0, 108vh, 0) scale(0.85);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.65;
+  }
+  85% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: translate3d(-28px, -12vh, 0) scale(1.08);
+    opacity: 0;
+  }
+}
+
+@keyframes kawaii-twinkle {
+  0%, 100% {
+    transform: scale(0.7);
+    opacity: 0.25;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.85;
+  }
+}
+
+@keyframes kawaii-drift {
+  0% {
+    transform: translate3d(-15vw, 0, 0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.55;
+  }
+  85% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: translate3d(115vw, 12px, 0);
+    opacity: 0;
+  }
+}
+
+.animate-kawaii-fall {
+  animation: kawaii-fall linear infinite;
+}
+
+.animate-kawaii-rise {
+  animation: kawaii-rise linear infinite;
+}
+
+.animate-kawaii-twinkle {
+  animation: kawaii-twinkle ease-in-out infinite;
+}
+
+.animate-kawaii-drift {
+  animation: kawaii-drift linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-kawaii-fall,
+  .animate-kawaii-rise,
+  .animate-kawaii-twinkle,
+  .animate-kawaii-drift {
+    animation: none !important;
+  }
+}
+
+/* Custom focus visibility */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--portal-primary);
+  outline-offset: 2px;
+}
