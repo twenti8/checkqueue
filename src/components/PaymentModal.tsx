@@ -10,6 +10,7 @@ interface PaymentModalProps {
   onClose: () => void;
   bankInfo: BankInfo;
   studioName: string;
+  onNotify?: (message: string) => void;
 }
 
 const PRESET_AMOUNTS = [350, 500, 850, 1200];
@@ -19,6 +20,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   onClose,
   bankInfo,
   studioName,
+  onNotify,
 }) => {
   const [amountInput, setAmountInput] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
@@ -60,9 +62,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   if (!open) return null;
 
   const handleCopy = async (text: string, field: 'account' | 'promptpay') => {
+    const label =
+      field === 'account'
+        ? `คัดลอกเลขที่บัญชี ${text} เรียบร้อยแล้ว`
+        : `คัดลอกหมายเลขพร้อมเพย์ ${text} เรียบร้อยแล้ว`;
     try {
       await navigator.clipboard.writeText(text.replace(/\s+/g, ''));
       setCopiedField(field);
+      onNotify?.(label);
       setTimeout(() => setCopiedField(null), 2000);
     } catch {
       // Fallback for restricted clipboard environments
@@ -73,6 +80,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       document.execCommand('copy');
       document.body.removeChild(textarea);
       setCopiedField(field);
+      onNotify?.(label);
       setTimeout(() => setCopiedField(null), 2000);
     }
   };

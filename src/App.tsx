@@ -296,6 +296,7 @@ export default function App() {
         onClose={() => setIsPaymentOpen(false)}
         bankInfo={data.profile.bankInfo}
         studioName={data.profile.studioName}
+        onNotify={(msg) => showToast(msg)}
       />
 
       <AdminLoginModal
@@ -310,25 +311,27 @@ export default function App() {
       />
 
       {toast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-5 right-5 z-50 max-w-sm rounded-xl border px-4 py-3 text-xs font-semibold shadow-lg"
-          style={
-            toast.type === 'error'
-              ? {
-                  backgroundColor: '#FFF1F2',
-                  borderColor: '#FECDD3',
-                  color: '#9F1239',
-                }
-              : {
-                  backgroundColor: 'var(--portal-surface)',
-                  borderColor: 'var(--portal-primary)',
-                  color: 'var(--portal-ink)',
-                }
-          }
-        >
-          {toast.message}
+        <div className="fixed bottom-24 inset-x-0 z-50 flex justify-center px-4 pointer-events-none mb-[env(safe-area-inset-bottom)]">
+          <div
+            role="status"
+            aria-live="polite"
+            className="animate-toast-enter pointer-events-auto w-fit max-w-[90vw] px-5 py-3 rounded-2xl border shadow-lg text-center text-sm font-medium leading-relaxed break-words"
+            style={
+              toast.type === 'error'
+                ? {
+                    backgroundColor: '#FFF1F2',
+                    borderColor: '#FECDD3',
+                    color: '#9F1239',
+                  }
+                : {
+                    backgroundColor: 'var(--portal-surface)',
+                    borderColor: 'var(--portal-primary)',
+                    color: 'var(--portal-ink)',
+                  }
+            }
+          >
+            {toast.message}
+          </div>
         </div>
       )}
     </div>

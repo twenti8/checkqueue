@@ -2,5 +2,7 @@
   "name": "Momo Pastel Studio — Queue Tracking & Bio-Link Portal",
   "description": "Pastel kawaii commission bio-link portal, 3D portfolio showcase, live queue tracker, loyalty points lookup, and dynamic Thai PromptPay QR generator backed by Google Sheets.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
