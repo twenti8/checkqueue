@@ -4,12 +4,16 @@ export const MAX_GIF_BASE64_LENGTH = 700_000;
 export const GIF_TOO_LARGE_MESSAGE =
   'ไฟล์ GIF ใหญ่เกินไป กรุณาใช้ไฟล์ขนาดไม่เกิน 500 KB';
 
+const SHEETS_FORMULA_LEADING_CHAR = /^[=+\-@]/;
+
 /**
  * Splits a Base64 Data URL into <= 40,000-character chunks for PortalSettings rows.
  * - If empty: clears main key and sets `<baseKey>_count: 0`.
  * - If <= 40,000 chars: writes directly to `<baseKey>` and sets `<baseKey>_count: 0`.
  * - If > 40,000 chars: clears `<baseKey>` (`""`), writes `<baseKey>_count`, and
  *   writes `<baseKey>_part_0`, `<baseKey>_part_1`, ...
+ * - Adjusts split boundaries backward by a few chars if needed so no chunk begins
+ *   with `=`, `+`, `-`, or `@` (preventing Google Sheets from parsing a Base64 chunk as a formula).
  */
 export function buildChunkedImageSettingsPayload(
   baseKey: string,
@@ -33,15 +37,34 @@ export function buildChunkedImageSettingsPayload(
     };
   }
 
-  const totalChunks = Math.ceil(value.length / safeChunkSize);
+  const chunks: string[] = [];
+  let cursor = 0;
+
+  while (cursor < value.length) {
+    let end = Math.min(cursor + safeChunkSize, value.length);
+    if (end < value.length && safeChunkSize > 1) {
+      let adjustedEnd = end;
+      while (
+        adjustedEnd > cursor + 1 &&
+        SHEETS_FORMULA_LEADING_CHAR.test(value[adjustedEnd])
+      ) {
+        adjustedEnd -= 1;
+      }
+      if (!SHEETS_FORMULA_LEADING_CHAR.test(value[adjustedEnd])) {
+        end = adjustedEnd;
+      }
+    }
+    chunks.push(value.slice(cursor, end));
+    cursor = end;
+  }
+
   const payload: Record<string, string | number> = {
     [baseKey]: '',
-    [`${baseKey}_count`]: totalChunks,
+    [`${baseKey}_count`]: chunks.length,
   };
 
-  for (let i = 0; i < totalChunks; i += 1) {
-    const start = i * safeChunkSize;
-    payload[`${baseKey}_part_${i}`] = value.slice(start, start + safeChunkSize);
+  for (let i = 0; i < chunks.length; i += 1) {
+    payload[`${baseKey}_part_${i}`] = chunks[i];
   }
 
   return payload;

@@ -68,10 +68,13 @@ export const AdminImagesTab: React.FC<AdminImagesTabProps> = ({
       await onSaveImageSlot(key, '');
       setStatusMap((prev) => ({ ...prev, [key]: 'ล้างค่ารูปภาพแล้ว' }));
     } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'ล้างค่ารูปภาพไม่สำเร็จ';
       setErrorMap((prev) => ({
         ...prev,
-        [key]: err instanceof Error ? err.message : 'ล้างค่ารูปภาพไม่สำเร็จ',
+        [key]: errorMessage,
       }));
+      onNotifyError(errorMessage);
     } finally {
       setBusyKey(null);
     }

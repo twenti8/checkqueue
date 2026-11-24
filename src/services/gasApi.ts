@@ -43,11 +43,16 @@ export async function postGasAction(payload: GasPayload): Promise<{ status?: str
   }
 
   const text = await response.text();
+  let parsed: { status?: string; message?: string };
   try {
-    return JSON.parse(text) as { status?: string; message?: string };
+    parsed = JSON.parse(text) as { status?: string; message?: string };
   } catch {
     return { status: 'success' };
   }
+  if (parsed && parsed.status === 'error') {
+    throw new Error(parsed.message || 'บันทึกข้อมูลไม่สำเร็จ');
+  }
+  return parsed;
 }
 
 export function saveSettingsToSheet(data: Record<string, unknown>) {

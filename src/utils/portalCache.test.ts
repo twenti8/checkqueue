@@ -135,3 +135,21 @@ test('resolveImageFromSettings & normalizePortalResponse reassemble chunked imag
   assert.equal(normalized.images.img_banner, smallBanner);
   assert.equal(normalized.images.img_icon, undefined);
 });
+
+test('buildChunkedImageSettingsPayload shifts split boundary away from Sheets formula chars (+, =, -, @)', () => {
+  const prefix = 'data:image/gif;base64,';
+  // Place "+" right at the 40,000-character boundary
+  const bodyBefore = 'A'.repeat(IMAGE_CHUNK_SIZE - prefix.length);
+  const trickyGif = prefix + bodyBefore + '++' + 'B'.repeat(10_000);
+
+  const chunked = buildChunkedImageSettingsPayload('img_avatar', trickyGif);
+  assert.equal(chunked.img_avatar, '');
+  assert.equal(chunked.img_avatar_count, 2);
+
+  const part0 = String(chunked.img_avatar_part_0);
+  const part1 = String(chunked.img_avatar_part_1);
+  assert.ok(part0.length <= IMAGE_CHUNK_SIZE);
+  assert.ok(part1.length <= IMAGE_CHUNK_SIZE);
+  assert.equal(/^[=+\-@]/.test(part1), false);
+  assert.equal(resolveImageFromSettings(chunked, 'img_avatar'), trickyGif);
+});
