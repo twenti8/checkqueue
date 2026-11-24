@@ -1,14 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --portal-bg: #FFF7FA;
+  --portal-bg: #FFFFFF;
   --portal-surface: #FFFFFF;
-  --portal-surface-alt: #FFF0F5;
-  --portal-border: #F7D8E5;
-  --portal-primary: #E86A92;
-  --portal-secondary: #F7B2C8;
-  --portal-ink: #3C2330;
-  --portal-muted: #7B5A6B;
+  --portal-surface-alt: #F8FAFC;
+  --portal-border: #E2E8F0;
+  --portal-primary: #64748B;
+  --portal-secondary: #CBD5E1;
+  --portal-ink: #1E293B;
+  --portal-muted: #64748B;
+  --bg-color: #FFFFFF;
+  --primary-color: #64748B;
+  --accent-color: #CBD5E1;
+  --text-color: #1E293B;
   --font-display: 'Mitr', 'Noto Sans Thai', sans-serif;
   --font-body: 'Noto Sans Thai', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;

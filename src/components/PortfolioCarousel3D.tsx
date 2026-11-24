@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Expand, X } from 'lucide-react';
 import { DEFAULT_ASSETS } from '../constants/themes';
 import type { ImageSlotKey, PortalImages } from '../types/portal';
@@ -27,6 +27,10 @@ export const PortfolioCarousel3D: React.FC<PortfolioCarousel3DProps> = ({ images
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxSlide, setLightboxSlide] = useState<SlideItem | null>(null);
   const [failedKeys, setFailedKeys] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setFailedKeys({});
+  }, [images]);
 
   const total = slides.length;
 

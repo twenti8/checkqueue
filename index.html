@@ -20,6 +20,20 @@
     <script>
       (function () {
         try {
+          var rawVars = localStorage.getItem('kawaii_theme_vars');
+          if (rawVars) {
+            var vars = JSON.parse(rawVars);
+            if (vars && typeof vars === 'object') {
+              var rootStyle = document.documentElement.style;
+              for (var key in vars) {
+                if (Object.prototype.hasOwnProperty.call(vars, key) && typeof vars[key] === 'string') {
+                  rootStyle.setProperty(key, vars[key]);
+                }
+              }
+            }
+          }
+        } catch (e) {}
+        try {
           var cachedIcon = localStorage.getItem('cached_apple_touch_icon');
           if (cachedIcon) {
             var appleLink = document.getElementById('apple-touch-icon');

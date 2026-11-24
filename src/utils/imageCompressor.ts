@@ -1,4 +1,11 @@
+import {
+  GIF_TOO_LARGE_MESSAGE,
+  MAX_GIF_BASE64_LENGTH,
+  validateGifDataUrl,
+} from './portalCache';
+
 export const MAX_SHEET_BASE64_LENGTH = 25_000;
+export { GIF_TOO_LARGE_MESSAGE, MAX_GIF_BASE64_LENGTH };
 
 export interface CompressedImageResult {
   dataUrl: string;
@@ -6,7 +13,16 @@ export interface CompressedImageResult {
   width: number;
   height: number;
   quality: number;
-  mimeType: 'image/webp' | 'image/jpeg';
+  mimeType: 'image/webp' | 'image/jpeg' | 'image/gif';
+}
+
+export function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('ไม่สามารถอ่านไฟล์รูปภาพได้'));
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.readAsDataURL(file);
+  });
 }
 
 function loadImageFromFile(file: File): Promise<HTMLImageElement> {
@@ -36,15 +52,35 @@ function detectPreferredMime(canvas: HTMLCanvasElement): 'image/webp' | 'image/j
 }
 
 /**
- * Compresses an uploaded image file via HTML5 Canvas for direct storage
- * inside a Google Sheets cell (strictly < 25,000 characters).
- * Loops quality down in steps of 0.1 (from 0.9 to 0.1) and further scales
- * dimensions if needed so the Base64 output is ALWAYS under 25,000 chars.
+ * Prepares an uploaded image for direct storage in a Google Sheets cell:
+ * - Animated GIF (`image/gif`): bypasses HTML5 Canvas completely via FileReader
+ *   so frame animation is preserved, enforcing length <= 48,000 characters.
+ * - Static images (JPEG/PNG/WebP): resizes via HTML5 Canvas and steps quality
+ *   down by 0.1 until Base64 length is strictly < 25,000 characters.
  */
 export async function compressImageForSheet(
   file: File,
   maxWidth: number
 ): Promise<CompressedImageResult> {
+  const isGif =
+    file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
+
+  if (isGif) {
+    const dataUrl = await readFileAsDataUrl(file);
+    const check = validateGifDataUrl(dataUrl);
+    if (!check.valid) {
+      throw new Error(check.error);
+    }
+    return {
+      dataUrl,
+      length: dataUrl.length,
+      width: 0,
+      height: 0,
+      quality: 1,
+      mimeType: 'image/gif',
+    };
+  }
+
   const img = await loadImageFromFile(file);
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
@@ -55,7 +91,10 @@ export async function compressImageForSheet(
   let targetWidth = Math.min(img.naturalWidth || img.width, maxWidth);
   let targetHeight = Math.max(
     1,
-    Math.round(((img.naturalHeight || img.height) * targetWidth) / Math.max(1, img.naturalWidth || img.width))
+    Math.round(
+      ((img.naturalHeight || img.height) * targetWidth) /
+        Math.max(1, img.naturalWidth || img.width)
+    )
   );
 
   const mimeType = detectPreferredMime(canvas);
@@ -76,7 +115,6 @@ export async function compressImageForSheet(
   let bestDataUrl = '';
   let bestQuality = 0.9;
 
-  // Try quality 0.9 -> 0.1 in 0.1 steps; if still >= 25,000 chars, scale down 80% and repeat
   for (let scaleAttempt = 0; scaleAttempt < 5; scaleAttempt++) {
     drawAtSize(targetWidth, targetHeight);
 
@@ -100,12 +138,15 @@ export async function compressImageForSheet(
     targetWidth = Math.max(80, Math.round(targetWidth * 0.78));
     targetHeight = Math.max(
       80,
-      Math.round(((img.naturalHeight || img.height) * targetWidth) / Math.max(1, img.naturalWidth || img.width))
+      Math.round(
+        ((img.naturalHeight || img.height) * targetWidth) /
+          Math.max(1, img.naturalWidth || img.width)
+      )
     );
   }
 
   if (bestDataUrl.length >= MAX_SHEET_BASE64_LENGTH) {
-    throw new Error('รูปภาพมีรายละเอียดสูงเกินไป ไม่สามารถบีบอัดให้ต่ำกว่า 25,000 ตัวอักษรได้');
+    throw new Error('รูปภาพมีขนาดใหญ่เกินไป กรุณาเลือกรูปภาพที่มีรายละเอียดน้อยลง');
   }
 
   return {

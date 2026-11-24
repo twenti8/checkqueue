@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { BackgroundEffects } from './components/BackgroundEffects';
@@ -28,6 +28,11 @@ import type {
   ReviewItem,
 } from './types/portal';
 import { resolveActiveThemeColors, sortQueues } from './utils/queueLogic';
+import {
+  applyThemeVarsToRoot,
+  readPortalCache,
+  writePortalCache,
+} from './utils/portalCache';
 
 const INITIAL_PORTAL_DATA: PortalData = {
   profile: DEFAULT_PROFILE,
@@ -40,8 +45,13 @@ const INITIAL_PORTAL_DATA: PortalData = {
 };
 
 export default function App() {
-  const [data, setData] = useState<PortalData>(INITIAL_PORTAL_DATA);
-  const [isLoading, setIsLoading] = useState(true);
+  const [cachedInitial] = useState<PortalData | null>(() => readPortalCache());
+  const [data, setData] = useState<PortalData>(() => cachedInitial ?? INITIAL_PORTAL_DATA);
+  const [hasHydratedPortal, setHasHydratedPortal] = useState<boolean>(
+    () => cachedInitial !== null
+  );
+  const hasHydratedRef = useRef<boolean>(cachedInitial !== null);
+  const [isLoading, setIsLoading] = useState<boolean>(() => cachedInitial === null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -56,6 +66,14 @@ export default function App() {
     setToast({ message, type });
   }, []);
 
+  const commitPortalData = useCallback((updater: (prev: PortalData) => PortalData) => {
+    setData((prev) => {
+      const next = updater(prev);
+      writePortalCache(next);
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     if (!toast) return;
     const timer = window.setTimeout(() => setToast(null), 3600);
@@ -65,46 +83,46 @@ export default function App() {
   const loadFromSheets = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) {
       setIsRefreshing(true);
-    } else {
+    } else if (!hasHydratedRef.current) {
       setIsLoading(true);
     }
     setLoadError(null);
     try {
       const fresh = await fetchPortalData();
+      hasHydratedRef.current = true;
       setData(fresh);
+      setHasHydratedPortal(true);
+      writePortalCache(fresh);
     } catch (err) {
+      hasHydratedRef.current = true;
       setLoadError(err instanceof Error ? err.message : 'ไม่สามารถดึงข้อมูลได้');
+      setHasHydratedPortal(true);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
   }, []);
 
-  // Immediate GET fetch on page load — zero URL prompt popups
+  // Immediate GET fetch on page load (Stale-While-Revalidate if cache exists)
   useEffect(() => {
     loadFromSheets(false);
   }, [loadFromSheets]);
 
-  // Apply active theme CSS custom properties globally so all visitors see the admin-selected theme
+  // Apply active theme CSS custom properties only after real/cached data is ready
   const resolvedColors = useMemo(
     () => resolveActiveThemeColors(data.activeThemeId, data.customThemeColors),
     [data.activeThemeId, data.customThemeColors]
   );
 
   useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty('--portal-bg', resolvedColors.bg);
-    root.style.setProperty('--portal-surface', resolvedColors.surface);
-    root.style.setProperty('--portal-surface-alt', resolvedColors.surfaceAlt);
-    root.style.setProperty('--portal-border', resolvedColors.border);
-    root.style.setProperty('--portal-primary', resolvedColors.primary);
-    root.style.setProperty('--portal-secondary', resolvedColors.secondary);
-    root.style.setProperty('--portal-ink', resolvedColors.ink);
-    root.style.setProperty('--portal-muted', resolvedColors.muted);
-  }, [resolvedColors]);
+    if (!hasHydratedPortal) return;
+    applyThemeVarsToRoot(resolvedColors);
+  }, [resolvedColors, hasHydratedPortal]);
 
   // Sync dynamic page title, favicon, and iOS apple-touch-icon (img_icon -> fallback img_avatar)
   useEffect(() => {
+    if (!hasHydratedPortal) return;
+
     if (data.profile.studioName) {
       document.title = `${data.profile.studioName} — Queue Tracking & Bio-Link Portal`;
     }
@@ -122,7 +140,7 @@ export default function App() {
     }
 
     let faviconLink =
-      document.getElementById('favicon-icon') as HTMLLinkElement | null ||
+      (document.getElementById('favicon-icon') as HTMLLinkElement | null) ||
       document.querySelector<HTMLLinkElement>("link[rel='icon']");
     if (!faviconLink) {
       faviconLink = document.createElement('link');
@@ -133,7 +151,7 @@ export default function App() {
     faviconLink.href = iconDataUrl;
 
     let appleTouchLink =
-      document.getElementById('apple-touch-icon') as HTMLLinkElement | null ||
+      (document.getElementById('apple-touch-icon') as HTMLLinkElement | null) ||
       document.querySelector<HTMLLinkElement>("link[rel='apple-touch-icon']");
     if (!appleTouchLink) {
       appleTouchLink = document.createElement('link');
@@ -148,12 +166,18 @@ export default function App() {
     } catch {
       // Ignore storage quota or private browsing errors
     }
-  }, [data.profile.studioName, data.images.img_icon, data.images.img_avatar, isLoading]);
+  }, [
+    data.profile.studioName,
+    data.images.img_icon,
+    data.images.img_avatar,
+    hasHydratedPortal,
+    isLoading,
+  ]);
 
   // Queue Actions
   const handleSaveQueue = async (queue: QueueItem) => {
     await saveQueueToSheet(queue);
-    setData((prev) => {
+    commitPortalData((prev) => {
       const exists = prev.queues.some((item) => item.id === queue.id);
       const nextQueues = exists
         ? prev.queues.map((item) => (item.id === queue.id ? queue : item))
@@ -165,7 +189,7 @@ export default function App() {
 
   const handleDeleteQueue = async (id: string) => {
     await deleteQueueFromSheet(id);
-    setData((prev) => ({
+    commitPortalData((prev) => ({
       ...prev,
       queues: prev.queues.filter((item) => item.id !== id),
     }));
@@ -173,7 +197,7 @@ export default function App() {
   };
 
   const handleSyncQueues = async (reordered: QueueItem[]) => {
-    setData((prev) => ({ ...prev, queues: reordered }));
+    commitPortalData((prev) => ({ ...prev, queues: reordered }));
     try {
       await syncQueuesToSheet(reordered);
       showToast('บันทึกลำดับคิวงานทั้งหมดลง Google Sheets แล้ว');
@@ -188,7 +212,7 @@ export default function App() {
   // Review & Loyalty Points Actions
   const handleSaveReview = async (review: ReviewItem) => {
     await saveReviewToSheet(review);
-    setData((prev) => ({
+    commitPortalData((prev) => ({
       ...prev,
       reviews: [review, ...prev.reviews.filter((r) => r.id !== review.id)],
     }));
@@ -198,7 +222,7 @@ export default function App() {
   const handleDeleteReview = async (id: string) => {
     try {
       await deleteReviewFromSheet(id);
-      setData((prev) => ({
+      commitPortalData((prev) => ({
         ...prev,
         reviews: prev.reviews.filter((r) => r.id !== id),
       }));
@@ -233,7 +257,7 @@ export default function App() {
         customThemeColors: payload.customThemeColors,
         backgroundEffect: payload.backgroundEffect,
       });
-      setData((prev) => ({
+      commitPortalData((prev) => ({
         ...prev,
         activeThemeId: payload.activeThemeId,
         customThemeColors: payload.customThemeColors,
@@ -248,7 +272,7 @@ export default function App() {
   // Separate Image Slot Action (never merged into profile)
   const handleSaveImageSlot = async (key: ImageSlotKey, dataUrl: string) => {
     await saveSettingsToSheet({ [key]: dataUrl });
-    setData((prev) => {
+    commitPortalData((prev) => {
       const nextImages = { ...prev.images };
       if (dataUrl) {
         nextImages[key] = dataUrl;
@@ -267,7 +291,7 @@ export default function App() {
   ) => {
     try {
       await saveSettingsToSheet({ profile: nextProfile });
-      setData((prev) => ({ ...prev, profile: nextProfile }));
+      commitPortalData((prev) => ({ ...prev, profile: nextProfile }));
       showToast(successLabel);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'บันทึกข้อมูลไม่สำเร็จ', 'error');
@@ -281,6 +305,22 @@ export default function App() {
       setIsAdminLoginOpen(true);
     }
   };
+
+  // Neutral pure-white loading screen for first-time visitors (prevents default pink theme flash)
+  if (!hasHydratedPortal && isLoading) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex min-h-screen flex-col items-center justify-center bg-white px-6 text-slate-600"
+      >
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-slate-200 border-t-slate-500" />
+        <p className="mt-4 text-sm font-medium text-slate-500">
+          กำลังโหลดข้อมูล...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen bg-[var(--portal-bg)] text-[var(--portal-ink)] transition-colors duration-200">
@@ -310,6 +350,7 @@ export default function App() {
           onSaveThemeSettings={handleSaveThemeSettings}
           onSaveImageSlot={handleSaveImageSlot}
           onSaveProfile={handleSaveProfile}
+          onNotifyError={(msg) => showToast(msg, 'error')}
         />
       ) : (
         <PublicPortal

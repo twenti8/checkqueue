@@ -7,6 +7,7 @@ import { compressImageForSheet } from '../../utils/imageCompressor';
 interface AdminImagesTabProps {
   images: PortalImages;
   onSaveImageSlot: (key: ImageSlotKey, dataUrl: string) => Promise<void>;
+  onNotifyError: (message: string) => void;
 }
 
 function getFallbackPreview(key: ImageSlotKey): string | null {
@@ -19,6 +20,7 @@ function getFallbackPreview(key: ImageSlotKey): string | null {
 export const AdminImagesTab: React.FC<AdminImagesTabProps> = ({
   images,
   onSaveImageSlot,
+  onNotifyError,
 }) => {
   const [busyKey, setBusyKey] = useState<ImageSlotKey | null>(null);
   const [statusMap, setStatusMap] = useState<Record<string, string>>({});
@@ -46,11 +48,14 @@ export const AdminImagesTab: React.FC<AdminImagesTabProps> = ({
         [key]: 'บันทึกรูปภาพเรียบร้อยแล้ว',
       }));
     } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'อัปโหลดรูปภาพไม่สำเร็จ';
       setErrorMap((prev) => ({
         ...prev,
-        [key]: err instanceof Error ? err.message : 'อัปโหลดรูปภาพไม่สำเร็จ',
+        [key]: errorMessage,
       }));
       setStatusMap((prev) => ({ ...prev, [key]: '' }));
+      onNotifyError(errorMessage);
     } finally {
       setBusyKey(null);
     }
@@ -129,7 +134,7 @@ export const AdminImagesTab: React.FC<AdminImagesTabProps> = ({
             {isBusy ? 'กำลังประมวลผล...' : 'เลือกรูปและบันทึก'}
             <input
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/gif"
               disabled={isBusy}
               className="sr-only"
               onChange={(e) => {
@@ -163,7 +168,7 @@ export const AdminImagesTab: React.FC<AdminImagesTabProps> = ({
           จัดการรูปภาพหน้าร้าน
         </h3>
         <p className="mt-1 text-xs text-[var(--portal-muted)]">
-          เลือกรูปภาพที่ต้องการแสดงในแต่ละส่วนของหน้าเว็บ ระบบจะปรับขนาดและบันทึกให้อัตโนมัติทันที
+          เลือกรูปภาพที่ต้องการแสดงในแต่ละส่วนของหน้าเว็บ รองรับภาพนิ่งและภาพเคลื่อนไหว GIF ระบบจะปรับขนาดและบันทึกให้อัตโนมัติทันที
         </p>
       </div>
 

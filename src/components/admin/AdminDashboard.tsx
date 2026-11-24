@@ -49,6 +49,7 @@ interface AdminDashboardProps {
   }) => Promise<void>;
   onSaveImageSlot: (key: ImageSlotKey, dataUrl: string) => Promise<void>;
   onSaveProfile: (nextProfile: ProfileSettings, successLabel: string) => Promise<void>;
+  onNotifyError: (message: string) => void;
 }
 
 const TABS: Array<{ id: AdminTabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
@@ -74,6 +75,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onSaveThemeSettings,
   onSaveImageSlot,
   onSaveProfile,
+  onNotifyError,
 }) => {
   const [activeTab, setActiveTab] = useState<AdminTabId>('queues');
 
@@ -189,6 +191,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <AdminImagesTab
             images={data.images}
             onSaveImageSlot={onSaveImageSlot}
+            onNotifyError={onNotifyError}
           />
         )}
 

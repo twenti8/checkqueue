@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowUpRight,
   CreditCard,
@@ -75,6 +75,14 @@ export const PublicPortal: React.FC<PublicPortalProps> = ({
 
   const avatarSrc = images.img_avatar || DEFAULT_ASSETS.avatar;
   const coverSrc = images.img_cover || DEFAULT_ASSETS.cover;
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [avatarSrc]);
+
+  useEffect(() => {
+    setCoverFailed(false);
+  }, [coverSrc]);
 
   return (
     <div className="relative z-10 min-h-screen">
