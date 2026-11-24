@@ -75,7 +75,7 @@ export const AdminThemeTab: React.FC<AdminThemeTabProps> = ({
             ตั้งค่าธีมสีพาสเทลและเอฟเฟกต์พื้นหลัง (เฉพาะแอดมิน)
           </h3>
           <p className="mt-1 text-xs text-[var(--portal-muted)]">
-            เมื่อกดบันทึก ระบบจะเก็บค่า activeThemeId, customThemeColors และ backgroundEffect ลง Google Sheets เพื่อให้ผู้มาเยือนทุกอุปกรณ์เห็นธีมเดียวกัน
+            เลือกธีมสีและเอฟเฟกต์พื้นหลังที่ต้องการ เมื่อกดบันทึกผู้เข้าชมทุกคนจะเห็นธีมเดียวกันในทุกอุปกรณ์
           </p>
         </div>
 
@@ -164,7 +164,7 @@ export const AdminThemeTab: React.FC<AdminThemeTabProps> = ({
             </h4>
             <p className="text-xs text-[var(--portal-muted)]">
               {activeThemeId === 'custom'
-                ? 'กำลังใช้งานโหมดสีที่กำหนดเอง (custom)'
+                ? 'กำลังใช้งานโหมดสีที่กำหนดเอง'
                 : 'ปรับสีใดก็ได้ด้านล่างเพื่อสลับเป็นโหมดกำหนดสีเองทันที'}
             </p>
           </div>

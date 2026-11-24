@@ -422,7 +422,7 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <label htmlFor="q-no" className="block text-xs font-medium text-[var(--portal-ink)]">
-                    เลขคิว (queueNo)
+                    เลขคิว
                   </label>
                   <input
                     id="q-no"
@@ -435,7 +435,7 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
                 </div>
                 <div className="sm:col-span-2">
                   <label htmlFor="q-client" className="block text-xs font-medium text-[var(--portal-ink)]">
-                    ชื่อลูกค้า (clientName)
+                    ชื่อลูกค้า
                   </label>
                   <input
                     id="q-client"
@@ -452,7 +452,7 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label htmlFor="q-worktype" className="block text-xs font-medium text-[var(--portal-ink)]">
-                    ประเภทงาน (workType)
+                    ประเภทงาน
                   </label>
                   <input
                     id="q-worktype"
@@ -465,7 +465,7 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
                 </div>
                 <div>
                   <label htmlFor="q-channel" className="block text-xs font-medium text-[var(--portal-ink)]">
-                    ช่องทางสั่งงาน (channel)
+                    ช่องทางสั่งงาน
                   </label>
                   <input
                     id="q-channel"
@@ -480,7 +480,7 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
 
               <div>
                 <label htmlFor="q-details" className="block text-xs font-medium text-[var(--portal-ink)]">
-                  รายละเอียดงาน (details)
+                  รายละเอียดงาน
                 </label>
                 <textarea
                   id="q-details"
@@ -541,7 +541,7 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
               <div className="grid gap-4 sm:grid-cols-4">
                 <div>
                   <label htmlFor="q-month" className="block text-xs font-medium text-[var(--portal-ink)]">
-                    เดือน (month)
+                    เดือน
                   </label>
                   <select
                     id="q-month"
@@ -558,7 +558,7 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
                 </div>
                 <div>
                   <label htmlFor="q-year" className="block text-xs font-medium text-[var(--portal-ink)]">
-                    ปี (year)
+                    ปี
                   </label>
                   <input
                     id="q-year"
@@ -570,7 +570,7 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
                 </div>
                 <div>
                   <label htmlFor="q-deadline" className="block text-xs font-medium text-[var(--portal-ink)]">
-                    กำหนดส่ง (deadline)
+                    กำหนดส่ง
                   </label>
                   <input
                     id="q-deadline"
@@ -582,7 +582,7 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
                 </div>
                 <div>
                   <label htmlFor="q-order" className="block text-xs font-medium text-[var(--portal-ink)]">
-                    ลำดับคิว (sortOrder)
+                    ลำดับคิว
                   </label>
                   <input
                     id="q-order"
@@ -598,7 +598,7 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
               <div className="grid items-center gap-4 sm:grid-cols-2">
                 <div>
                   <label htmlFor="q-workstatus" className="block text-xs font-medium text-[var(--portal-ink)]">
-                    สถานะการทำงาน (workStatus)
+                    สถานะการทำงาน
                   </label>
                   <select
                     id="q-workstatus"
@@ -624,7 +624,7 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
                     className="h-4 w-4 rounded accent-[var(--portal-primary)]"
                   />
                   <span className="text-sm font-medium text-[var(--portal-ink)]">
-                    คิวด่วนพิเศษ (isRush)
+                    คิวด่วนพิเศษ
                   </span>
                 </label>
               </div>

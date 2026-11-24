@@ -15,6 +15,21 @@
     />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <link id="favicon-icon" rel="icon" href="" />
+    <link id="apple-touch-icon" rel="apple-touch-icon" href="" />
+    <script>
+      (function () {
+        try {
+          var cachedIcon = localStorage.getItem('cached_apple_touch_icon');
+          if (cachedIcon) {
+            var appleLink = document.getElementById('apple-touch-icon');
+            if (appleLink) appleLink.setAttribute('href', cachedIcon);
+            var favLink = document.getElementById('favicon-icon');
+            if (favLink) favLink.setAttribute('href', cachedIcon);
+          }
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

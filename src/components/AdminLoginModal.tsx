@@ -90,7 +90,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 setPassword(e.target.value);
                 if (error) setError('');
               }}
-              placeholder="กรอกรหัสผ่าน (ค่าเริ่มต้น 1234)"
+              placeholder="กรอกรหัสผ่าน"
               className="mt-1.5 w-full rounded-xl border border-[var(--portal-border)] bg-[var(--portal-surface-alt)] px-3.5 py-2.5 text-sm text-[var(--portal-ink)]"
             />
             {error && (

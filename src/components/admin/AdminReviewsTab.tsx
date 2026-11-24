@@ -64,7 +64,7 @@ export const AdminReviewsTab: React.FC<AdminReviewsTabProps> = ({
           เพิ่มรีวิวและแต้มสะสม
         </h3>
         <p className="mt-1 text-xs text-[var(--portal-muted)]">
-          บันทึกลงแท็บ Reviews บน Google Sheets และรวมแต้มสะสมให้อัตโนมัติ
+          เพิ่มรีวิวความประทับใจจากลูกค้าพร้อมคำนวณแต้มสะสมให้อัตโนมัติ
         </p>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">

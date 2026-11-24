@@ -119,7 +119,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
                 ข้อมูลบัญชีธนาคารและพร้อมเพย์อัตโนมัติ
               </h3>
               <p className="text-xs text-[var(--portal-muted)]">
-                ระบบจะสร้าง QR Code พร้อมเพย์มาตรฐาน EMVCo จากเบอร์โทรหรือเลขบัตรประชาชนอัตโนมัติ ไม่ต้องอัปโหลดรูป QR
+                ระบบจะสร้าง QR Code พร้อมเพย์จากเบอร์โทรหรือเลขบัตรประชาชนให้อัตโนมัติ ไม่ต้องอัปโหลดรูป QR
               </p>
             </div>
           </div>
@@ -215,7 +215,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
                 ข้อมูลร้านค้า ลิงก์ Bio-Link และรหัสผ่านแอดมิน
               </h3>
               <p className="text-xs text-[var(--portal-muted)]">
-                บันทึกลงคีย์ profile ใน Google Sheets (ไม่รวมรูปภาพ)
+                ปรับแต่งชื่อร้าน คำแนะนำตัว ลิงก์ช่องทางติดต่อ และรหัสผ่านสำหรับเข้าสู่ระบบ
               </p>
             </div>
           </div>
@@ -390,7 +390,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
         <div className="mt-6 border-t border-[var(--portal-border)] pt-5">
           <div className="flex items-center gap-2 text-sm font-semibold text-[var(--portal-ink)]">
             <KeyRound className="h-4 w-4 text-[var(--portal-primary)]" />
-            <span>รหัสผ่านเข้าสู่ระบบแอดมิน (profile.adminPassword)</span>
+            <span>รหัสผ่านเข้าสู่ระบบแอดมิน</span>
           </div>
           <div className="mt-2.5 max-w-xs">
             <label htmlFor="admin-new-pass" className="sr-only">
@@ -401,11 +401,11 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
               type="text"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="ค่าเริ่มต้น 1234"
+              placeholder="กรอกรหัสผ่านใหม่"
               className="font-mono-num w-full rounded-xl border border-[var(--portal-border)] bg-[var(--portal-surface-alt)] px-3.5 py-2 text-sm text-[var(--portal-ink)]"
             />
             <p className="mt-1 text-xs text-[var(--portal-muted)]">
-              ค่าเริ่มต้นคือ 1234 สามารถเปลี่ยนและกด “บันทึกข้อมูลร้านค้า” เพื่ออัปเดตลง Google Sheets
+              เปลี่ยนรหัสผ่านแล้วกดปุ่ม “บันทึกข้อมูลร้านค้า” ด้านบนเพื่ออัปเดต
             </p>
           </div>
         </div>

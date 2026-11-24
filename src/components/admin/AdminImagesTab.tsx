@@ -2,10 +2,7 @@ import React, { useState } from 'react';
 import { Image as ImageIcon, RotateCcw, Upload } from 'lucide-react';
 import { DEFAULT_ASSETS, IMAGE_SLOT_CONFIG } from '../../constants/themes';
 import type { ImageSlotKey, PortalImages } from '../../types/portal';
-import {
-  compressImageForSheet,
-  MAX_SHEET_BASE64_LENGTH,
-} from '../../utils/imageCompressor';
+import { compressImageForSheet } from '../../utils/imageCompressor';
 
 interface AdminImagesTabProps {
   images: PortalImages;
@@ -35,18 +32,18 @@ export const AdminImagesTab: React.FC<AdminImagesTabProps> = ({
     if (!file) return;
     setBusyKey(key);
     setErrorMap((prev) => ({ ...prev, [key]: '' }));
-    setStatusMap((prev) => ({ ...prev, [key]: 'กำลังย่อขนาดและบีบอัดภาพ...' }));
+    setStatusMap((prev) => ({ ...prev, [key]: 'กำลังเตรียมรูปภาพ...' }));
 
     try {
       const compressed = await compressImageForSheet(file, maxWidth);
       setStatusMap((prev) => ({
         ...prev,
-        [key]: `บีบอัดแล้ว (${compressed.length.toLocaleString('th-TH')} / ${MAX_SHEET_BASE64_LENGTH.toLocaleString('th-TH')} ตัวอักษร · ${compressed.width}x${compressed.height}px) กำลังบันทึก...`,
+        [key]: 'กำลังบันทึกรูปภาพ...',
       }));
       await onSaveImageSlot(key, compressed.dataUrl);
       setStatusMap((prev) => ({
         ...prev,
-        [key]: `บันทึกแล้ว (${compressed.length.toLocaleString('th-TH')} ตัวอักษร · q=${compressed.quality})`,
+        [key]: 'บันทึกรูปภาพเรียบร้อยแล้ว',
       }));
     } catch (err) {
       setErrorMap((prev) => ({
@@ -108,11 +105,8 @@ export const AdminImagesTab: React.FC<AdminImagesTabProps> = ({
           <div className="mt-3">
             <p className="font-semibold text-sm text-[var(--portal-ink)]">{slot.label}</p>
             <p className="mt-0.5 text-xs text-[var(--portal-muted)]">{slot.description}</p>
-            <p className="font-mono-num mt-1 text-[11px] text-[var(--portal-muted)]">
-              คีย์: {slot.key}
-              {customSrc
-                ? ` · ${customSrc.length.toLocaleString('th-TH')} / 25,000 ตัวอักษร`
-                : ' · ใช้ภาพเริ่มต้น'}
+            <p className="mt-1 text-[11px] font-medium text-[var(--portal-muted)]">
+              {customSrc ? 'อัปโหลดรูปแล้ว' : 'ภาพเริ่มต้น'}
             </p>
           </div>
 
@@ -166,16 +160,16 @@ export const AdminImagesTab: React.FC<AdminImagesTabProps> = ({
     <div className="space-y-8">
       <div className="rounded-2xl border border-[var(--portal-border)] bg-[var(--portal-surface)] p-5">
         <h3 className="font-display text-lg font-semibold text-[var(--portal-ink)]">
-          จัดการรูปภาพบน Google Sheets (ย่อขนาดอัตโนมัติ &lt; 25,000 ตัวอักษร)
+          จัดการรูปภาพหน้าร้าน
         </h3>
         <p className="mt-1 text-xs text-[var(--portal-muted)]">
-          รูปภาพทุกตำแหน่งถูกแยกเก็บเป็นคีย์อิสระใน PortalSettings ด้วย HTML5 Canvas (WebP/JPEG) ไม่ใช้ Google Drive หรือ ImgBB และบันทึกทันทีเมื่อเลือกรูปเสร็จ
+          เลือกรูปภาพที่ต้องการแสดงในแต่ละส่วนของหน้าเว็บ ระบบจะปรับขนาดและบันทึกให้อัตโนมัติทันที
         </p>
       </div>
 
       <section className="space-y-3">
         <h4 className="font-display text-base font-semibold text-[var(--portal-ink)]">
-          รูปภาพโปรไฟล์ ปก ไอคอน และแบนเนอร์
+          รูปโปรไฟล์ ปก ไอคอน และแบนเนอร์
         </h4>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {brandSlots.map(renderSlotCard)}
@@ -184,7 +178,7 @@ export const AdminImagesTab: React.FC<AdminImagesTabProps> = ({
 
       <section className="space-y-3">
         <h4 className="font-display text-base font-semibold text-[var(--portal-ink)]">
-          รูปผลงานใน 3D Carousel (6 ช่อง: img_portfolio_1 ถึง img_portfolio_6)
+          ภาพตัวอย่างผลงานในสไลด์หน้าเว็บ
         </h4>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {portfolioSlots.map(renderSlotCard)}

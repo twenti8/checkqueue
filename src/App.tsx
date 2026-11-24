@@ -103,21 +103,52 @@ export default function App() {
     root.style.setProperty('--portal-muted', resolvedColors.muted);
   }, [resolvedColors]);
 
-  // Sync dynamic page title and favicon (img_icon) from Google Sheets
+  // Sync dynamic page title, favicon, and iOS apple-touch-icon (img_icon -> fallback img_avatar)
   useEffect(() => {
     if (data.profile.studioName) {
       document.title = `${data.profile.studioName} — Queue Tracking & Bio-Link Portal`;
     }
-    if (data.images.img_icon) {
-      let iconLink = document.querySelector<HTMLLinkElement>("link[rel='icon']");
-      if (!iconLink) {
-        iconLink = document.createElement('link');
-        iconLink.rel = 'icon';
-        document.head.appendChild(iconLink);
+
+    const iconDataUrl = data.images.img_icon || data.images.img_avatar || '';
+    if (!iconDataUrl) {
+      if (!isLoading) {
+        try {
+          localStorage.removeItem('cached_apple_touch_icon');
+        } catch {
+          // Ignore storage restrictions
+        }
       }
-      iconLink.href = data.images.img_icon;
+      return;
     }
-  }, [data.profile.studioName, data.images.img_icon]);
+
+    let faviconLink =
+      document.getElementById('favicon-icon') as HTMLLinkElement | null ||
+      document.querySelector<HTMLLinkElement>("link[rel='icon']");
+    if (!faviconLink) {
+      faviconLink = document.createElement('link');
+      faviconLink.id = 'favicon-icon';
+      faviconLink.rel = 'icon';
+      document.head.appendChild(faviconLink);
+    }
+    faviconLink.href = iconDataUrl;
+
+    let appleTouchLink =
+      document.getElementById('apple-touch-icon') as HTMLLinkElement | null ||
+      document.querySelector<HTMLLinkElement>("link[rel='apple-touch-icon']");
+    if (!appleTouchLink) {
+      appleTouchLink = document.createElement('link');
+      appleTouchLink.id = 'apple-touch-icon';
+      appleTouchLink.rel = 'apple-touch-icon';
+      document.head.appendChild(appleTouchLink);
+    }
+    appleTouchLink.href = iconDataUrl;
+
+    try {
+      localStorage.setItem('cached_apple_touch_icon', iconDataUrl);
+    } catch {
+      // Ignore storage quota or private browsing errors
+    }
+  }, [data.profile.studioName, data.images.img_icon, data.images.img_avatar, isLoading]);
 
   // Queue Actions
   const handleSaveQueue = async (queue: QueueItem) => {
@@ -226,7 +257,7 @@ export default function App() {
       }
       return { ...prev, images: nextImages };
     });
-    showToast(dataUrl ? `บันทึกรูปภาพ (${key}) ลง Google Sheets แล้ว` : `ล้างรูปภาพ (${key}) แล้ว`);
+    showToast(dataUrl ? 'บันทึกรูปภาพเรียบร้อยแล้ว' : 'ล้างค่ารูปภาพเรียบร้อยแล้ว');
   };
 
   // Profile & BankInfo Action
