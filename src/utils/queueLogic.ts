@@ -1,9 +1,14 @@
 import {
   BACKGROUND_EFFECTS,
+  DEFAULT_CHANNELS,
   DEFAULT_CUSTOM_THEME,
   DEFAULT_PROFILE,
+  DEFAULT_WORK_STATUSES,
+  DEFAULT_WORK_TYPES,
   IMAGE_SLOT_CONFIG,
   PASTEL_THEMES,
+  STATUS_COLOR_PALETTE,
+  type StatusBadgePalette,
 } from '../constants/themes';
 import type {
   BackgroundEffectId,
@@ -15,11 +20,89 @@ import type {
   ProfileSettings,
   QueueItem,
   ReviewItem,
+  StatusColorId,
   WorkStatus,
+  WorkStatusOption,
 } from '../types/portal';
 import { resolveImageFromSettings } from './imageChunking';
 
 export { resolveImageFromSettings };
+
+export interface ResolvedWorkStatusDisplay {
+  id: string;
+  label: string;
+  color: StatusColorId;
+  palette: StatusBadgePalette;
+  step: number;
+  totalSteps: number;
+  progressPercent: number;
+  isKnown: boolean;
+  isCompleted: boolean;
+}
+
+const VALID_STATUS_COLORS = new Set<StatusColorId>([
+  'gray',
+  'yellow',
+  'sky',
+  'purple',
+  'pink',
+  'orange',
+  'green',
+]);
+
+export function resolveWorkStatusDisplay(
+  workStatus: string,
+  customStatuses: WorkStatusOption[] = DEFAULT_WORK_STATUSES
+): ResolvedWorkStatusDisplay {
+  const list = customStatuses.length > 0 ? customStatuses : DEFAULT_WORK_STATUSES;
+  const normalizedTarget = (workStatus || '').trim();
+  const idx = list.findIndex(
+    (s) => s.id === normalizedTarget || s.label === normalizedTarget
+  );
+
+  if (idx >= 0) {
+    const matched = list[idx];
+    const totalSteps = list.length;
+    const progressPercent =
+      totalSteps <= 1 ? 100 : Math.round(15 + (idx / (totalSteps - 1)) * 85);
+    const safeColor: StatusColorId = VALID_STATUS_COLORS.has(matched.color)
+      ? matched.color
+      : 'gray';
+    return {
+      id: matched.id,
+      label: matched.label,
+      color: safeColor,
+      palette: STATUS_COLOR_PALETTE[safeColor],
+      step: idx + 1,
+      totalSteps,
+      progressPercent,
+      isKnown: true,
+      isCompleted: idx === totalSteps - 1,
+    };
+  }
+
+  return {
+    id: normalizedTarget || 'unknown',
+    label: normalizedTarget || 'ไม่ระบุสถานะ',
+    color: 'gray',
+    palette: STATUS_COLOR_PALETTE.gray,
+    step: 0,
+    totalSteps: list.length,
+    progressPercent: 0,
+    isKnown: false,
+    isCompleted: false,
+  };
+}
+
+export function isQueueCompleted(
+  workStatus: string,
+  customStatuses: WorkStatusOption[] = DEFAULT_WORK_STATUSES
+): boolean {
+  const list = customStatuses.length > 0 ? customStatuses : DEFAULT_WORK_STATUSES;
+  const last = list[list.length - 1];
+  if (!last) return workStatus === 'done';
+  return workStatus === last.id || workStatus === last.label;
+}
 
 export interface RevenueSummary {
   totalRevenue: number;
@@ -38,7 +121,10 @@ export interface LoyaltySummary {
   latestDate: string;
 }
 
-export function calculateRevenueSummary(queues: QueueItem[]): RevenueSummary {
+export function calculateRevenueSummary(
+  queues: QueueItem[],
+  customStatuses: WorkStatusOption[] = DEFAULT_WORK_STATUSES
+): RevenueSummary {
   let totalRevenue = 0;
   let totalPaid = 0;
   let activeCount = 0;
@@ -50,12 +136,13 @@ export function calculateRevenueSummary(queues: QueueItem[]): RevenueSummary {
     const paid = Math.min(Math.max(Number(q.paidAmount) || 0, 0), full > 0 ? full : Number.MAX_SAFE_INTEGER);
     totalRevenue += full;
     totalPaid += paid;
-    if (q.workStatus === 'done') {
+    const completed = isQueueCompleted(q.workStatus, customStatuses);
+    if (completed) {
       completedCount += 1;
     } else {
       activeCount += 1;
     }
-    if (q.isRush && q.workStatus !== 'done') {
+    if (q.isRush && !completed) {
       rushCount += 1;
     }
   }
@@ -179,22 +266,57 @@ function safeParseJson<T>(value: unknown): T | null {
   return null;
 }
 
-const VALID_WORK_STATUS: WorkStatus[] = ['waiting', 'sketch', 'lineart', 'coloring', 'done'];
 const VALID_PAYMENT_STATUS: PaymentStatus[] = ['unpaid', 'deposit', 'paid'];
 
-export function normalizeQueueItem(raw: Record<string, unknown>, fallbackOrder: number): QueueItem {
+function normalizeStringList(raw: unknown, fallback: string[]): string[] {
+  const parsed = safeParseJson<unknown>(raw);
+  if (!Array.isArray(parsed)) return [...fallback];
+  const cleaned = parsed
+    .map((item) => (typeof item === 'string' ? item.trim() : String(item ?? '').trim()))
+    .filter((item) => item.length > 0);
+  return cleaned.length > 0 ? Array.from(new Set(cleaned)) : [...fallback];
+}
+
+function normalizeWorkStatuses(raw: unknown): WorkStatusOption[] {
+  const parsed = safeParseJson<unknown>(raw);
+  if (!Array.isArray(parsed)) return DEFAULT_WORK_STATUSES.map((s) => ({ ...s }));
+  const cleaned: WorkStatusOption[] = [];
+  const seenIds = new Set<string>();
+
+  for (let i = 0; i < parsed.length; i += 1) {
+    const item = parsed[i];
+    if (!item || typeof item !== 'object') continue;
+    const rec = item as Record<string, unknown>;
+    const label = String(rec.label ?? '').trim();
+    if (!label) continue;
+    const id = String(rec.id ?? '').trim() || `status_${i + 1}`;
+    if (seenIds.has(id)) continue;
+    seenIds.add(id);
+    const rawColor = String(rec.color ?? 'gray').trim() as StatusColorId;
+    const color: StatusColorId = VALID_STATUS_COLORS.has(rawColor) ? rawColor : 'gray';
+    cleaned.push({ id, label, color });
+  }
+
+  return cleaned.length > 0 ? cleaned : DEFAULT_WORK_STATUSES.map((s) => ({ ...s }));
+}
+
+export function normalizeQueueItem(
+  raw: Record<string, unknown>,
+  fallbackOrder: number,
+  defaultStatusId = 'waiting'
+): QueueItem {
   const now = new Date();
   const fullPrice = Number(raw.fullPrice) || 0;
   const paidAmount = Number(raw.paidAmount) || 0;
-  const rawWork = String(raw.workStatus || 'waiting') as WorkStatus;
+  const rawWork = String(raw.workStatus || defaultStatusId).trim();
   const rawPay = String(raw.paymentStatus || '') as PaymentStatus;
 
   return {
     id: String(raw.id || `q-${Date.now()}-${fallbackOrder}`),
     queueNo: String(raw.queueNo || `Q-${String(fallbackOrder).padStart(3, '0')}`),
     clientName: String(raw.clientName || ''),
-    workType: String(raw.workType || 'Chibi'),
-    channel: String(raw.channel || 'X (Twitter)'),
+    workType: String(raw.workType || DEFAULT_WORK_TYPES[0]),
+    channel: String(raw.channel || DEFAULT_CHANNELS[0]),
     details: String(raw.details || ''),
     fullPrice,
     paidAmount,
@@ -204,7 +326,7 @@ export function normalizeQueueItem(raw: Record<string, unknown>, fallbackOrder: 
     paymentStatus: VALID_PAYMENT_STATUS.includes(rawPay)
       ? rawPay
       : derivePaymentStatus(fullPrice, paidAmount),
-    workStatus: VALID_WORK_STATUS.includes(rawWork) ? rawWork : 'waiting',
+    workStatus: rawWork || defaultStatusId,
     isRush: raw.isRush === true || raw.isRush === 'true' || raw.isRush === 1 || raw.isRush === 'TRUE',
     sortOrder: Number(raw.sortOrder) || fallbackOrder,
   };
@@ -267,11 +389,22 @@ export function normalizePortalResponse(raw: unknown): PortalData {
     }
   }
 
+  const customWorkTypes = normalizeStringList(
+    settings.customWorkTypes,
+    DEFAULT_WORK_TYPES
+  );
+  const customWorkStatuses = normalizeWorkStatuses(settings.customWorkStatuses);
+  const customChannels = normalizeStringList(
+    settings.customChannels,
+    DEFAULT_CHANNELS
+  );
+  const defaultStatusId = customWorkStatuses[0]?.id || 'waiting';
+
   const rawQueues = Array.isArray(payload.queues) ? payload.queues : [];
   const queues = sortQueues(
     rawQueues
       .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object'))
-      .map((item, idx) => normalizeQueueItem(item, idx + 1))
+      .map((item, idx) => normalizeQueueItem(item, idx + 1, defaultStatusId))
   );
 
   const rawReviews = Array.isArray(payload.reviews) ? payload.reviews : [];
@@ -287,6 +420,9 @@ export function normalizePortalResponse(raw: unknown): PortalData {
     images,
     queues,
     reviews,
+    customWorkTypes,
+    customWorkStatuses,
+    customChannels,
   };
 }
 

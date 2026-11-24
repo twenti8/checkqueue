@@ -6,6 +6,8 @@ import type {
   ProfileSettings,
   QueueItem,
   ReviewItem,
+  StatusColorId,
+  WorkStatusOption,
 } from '../types/portal';
 
 export const DEFAULT_ASSETS = {
@@ -327,16 +329,115 @@ export const DEFAULT_PROFILE: ProfileSettings = {
   ],
 };
 
-export const WORK_STATUS_META: Record<
-  QueueItem['workStatus'],
-  { label: string; color: string; bg: string; step: number }
-> = {
-  waiting: { label: 'รอคิว', color: '#7B5A6B', bg: '#F7EEF3', step: 1 },
-  sketch: { label: 'ร่างภาพ', color: '#B4690E', bg: '#FEF4E6', step: 2 },
-  lineart: { label: 'ตัดเส้น', color: '#5D56B8', bg: '#EFEFFE', step: 3 },
-  coloring: { label: 'ลงสี', color: '#C94E7A', bg: '#FDECF2', step: 4 },
-  done: { label: 'เสร็จสิ้น', color: '#287D52', bg: '#E7F6EE', step: 5 },
+export interface StatusBadgePalette {
+  id: StatusColorId;
+  labelTh: string;
+  bg: string;
+  text: string;
+  border: string;
+  bar: string;
+  swatch: string;
+}
+
+export const STATUS_COLOR_PALETTE: Record<StatusColorId, StatusBadgePalette> = {
+  gray: {
+    id: 'gray',
+    labelTh: 'สีเทา',
+    bg: '#F1F5F9',
+    text: '#475569',
+    border: '#CBD5E1',
+    bar: '#64748B',
+    swatch: '#94A3B8',
+  },
+  yellow: {
+    id: 'yellow',
+    labelTh: 'สีเหลืองพาสเทล',
+    bg: '#FEF9C3',
+    text: '#854D0E',
+    border: '#FDE047',
+    bar: '#CA8A04',
+    swatch: '#FACC15',
+  },
+  sky: {
+    id: 'sky',
+    labelTh: 'สีฟ้าพาสเทล',
+    bg: '#E0F2FE',
+    text: '#0369A1',
+    border: '#BAE6FD',
+    bar: '#0284C7',
+    swatch: '#38BDF8',
+  },
+  purple: {
+    id: 'purple',
+    labelTh: 'สีม่วงพาสเทล',
+    bg: '#F3E8FF',
+    text: '#6B21A8',
+    border: '#E9D5FF',
+    bar: '#9333EA',
+    swatch: '#C084FC',
+  },
+  pink: {
+    id: 'pink',
+    labelTh: 'สีชมพูพาสเทล',
+    bg: '#FCE7F3',
+    text: '#9D174D',
+    border: '#FBCFE8',
+    bar: '#DB2777',
+    swatch: '#F472B6',
+  },
+  orange: {
+    id: 'orange',
+    labelTh: 'สีส้มพาสเทล',
+    bg: '#FFEDD5',
+    text: '#9A3412',
+    border: '#FED7AA',
+    bar: '#EA580C',
+    swatch: '#FB923C',
+  },
+  green: {
+    id: 'green',
+    labelTh: 'สีเขียวพาสเทล',
+    bg: '#DCFCE7',
+    text: '#166534',
+    border: '#BBF7D0',
+    bar: '#16A34A',
+    swatch: '#4ADE80',
+  },
 };
+
+export const STATUS_COLOR_LIST: StatusBadgePalette[] = [
+  STATUS_COLOR_PALETTE.gray,
+  STATUS_COLOR_PALETTE.yellow,
+  STATUS_COLOR_PALETTE.sky,
+  STATUS_COLOR_PALETTE.purple,
+  STATUS_COLOR_PALETTE.pink,
+  STATUS_COLOR_PALETTE.orange,
+  STATUS_COLOR_PALETTE.green,
+];
+
+export const DEFAULT_WORK_TYPES: string[] = [
+  'แพ็กเกจมาตรฐาน',
+  'งานสั่งทำพิเศษ',
+  'งานออกแบบ / ตกแต่ง',
+  'งานด่วนพิเศษ',
+];
+
+export const DEFAULT_WORK_STATUSES: WorkStatusOption[] = [
+  { id: 'waiting', label: 'รอคิว', color: 'gray' },
+  { id: 'sketch', label: 'รับงาน / วางแผน', color: 'yellow' },
+  { id: 'lineart', label: 'กำลังดำเนินการ', color: 'sky' },
+  { id: 'coloring', label: 'เก็บรายละเอียด', color: 'purple' },
+  { id: 'done', label: 'เสร็จสิ้น', color: 'green' },
+];
+
+export const DEFAULT_CHANNELS: string[] = [
+  'LINE',
+  'Instagram',
+  'X (Twitter)',
+  'Facebook',
+  'TikTok',
+  'หน้าเว็บไซต์',
+];
 
 export const PAYMENT_STATUS_META: Record<
   QueueItem['paymentStatus'],

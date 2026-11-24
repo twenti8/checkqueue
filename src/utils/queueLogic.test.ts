@@ -6,9 +6,11 @@ import {
   filterQueues,
   normalizePortalResponse,
   reorderQueueList,
+  resolveWorkStatusDisplay,
   searchLoyaltyByClient,
 } from './queueLogic';
-import type { QueueItem, ReviewItem } from '../types/portal';
+import { serializePortalForCache } from './portalCache';
+import type { QueueItem, ReviewItem, WorkStatusOption } from '../types/portal';
 
 const sampleQueues: QueueItem[] = [
   {
@@ -146,4 +148,77 @@ test('normalizePortalResponse safely parses empty GAS response and stringified s
   assert.equal(populatedRes.queues[0].isRush, true);
   assert.equal(populatedRes.queues[0].paymentStatus, 'deposit');
   assert.equal(populatedRes.reviews[0].points, 2);
+});
+
+test('resolveWorkStatusDisplay computes 15%-100% progress, resolves pastel colors, and falls back safely for legacy statuses', () => {
+  const customStatuses: WorkStatusOption[] = [
+    { id: 'step_received', label: 'รับออเดอร์', color: 'gray' },
+    { id: 'step_making', label: 'กำลังจัดทำ', color: 'sky' },
+    { id: 'step_qc', label: 'ตรวจคุณภาพ', color: 'purple' },
+    { id: 'step_shipped', label: 'จัดส่งแล้ว', color: 'green' },
+  ];
+
+  const first = resolveWorkStatusDisplay('step_received', customStatuses);
+  assert.equal(first.isKnown, true);
+  assert.equal(first.step, 1);
+  assert.equal(first.progressPercent, 15);
+  assert.equal(first.isCompleted, false);
+  assert.equal(first.palette.id, 'gray');
+
+  const second = resolveWorkStatusDisplay('step_making', customStatuses);
+  assert.equal(second.step, 2);
+  assert.equal(second.progressPercent, 43);
+  assert.equal(second.palette.id, 'sky');
+
+  const last = resolveWorkStatusDisplay('step_shipped', customStatuses);
+  assert.equal(last.step, 4);
+  assert.equal(last.progressPercent, 100);
+  assert.equal(last.isCompleted, true);
+  assert.equal(last.palette.id, 'green');
+
+  // Legacy / removed status must render neutrally without throwing
+  const legacy = resolveWorkStatusDisplay('old_deleted_stage', customStatuses);
+  assert.equal(legacy.isKnown, false);
+  assert.equal(legacy.label, 'old_deleted_stage');
+  assert.equal(legacy.palette.id, 'gray');
+  assert.equal(legacy.progressPercent, 0);
+  assert.equal(legacy.isCompleted, false);
+});
+
+test('normalizePortalResponse and cache round-trip preserve customWorkTypes, customWorkStatuses, customChannels, and custom queue statuses', () => {
+  const customWorkTypes = ['ทำเล็บเจล', 'ต่อขนตา', 'สปามือ-เท้า'];
+  const customWorkStatuses: WorkStatusOption[] = [
+    { id: 'booked', label: 'จองคิวแล้ว', color: 'yellow' },
+    { id: 'in_service', label: 'กำลังให้บริการ', color: 'pink' },
+    { id: 'finished', label: 'เสร็จเรียบร้อย', color: 'green' },
+  ];
+  const customChannels = ['LINE OA', 'หน้าร้าน', 'Instagram'];
+
+  const parsed = normalizePortalResponse({
+    settings: {
+      customWorkTypes: JSON.stringify(customWorkTypes),
+      customWorkStatuses: JSON.stringify(customWorkStatuses),
+      customChannels: JSON.stringify(customChannels),
+    },
+    queues: [
+      { id: 'q1', queueNo: 'Q-001', clientName: 'คุณฝน', workType: 'ทำเล็บเจล', channel: 'LINE OA', workStatus: 'finished', fullPrice: 800, paidAmount: 800 },
+      { id: 'q2', queueNo: 'Q-002', clientName: 'คุณมายด์', workType: 'ต่อขนตา', channel: 'หน้าร้าน', workStatus: 'legacy_status', fullPrice: 600, paidAmount: 200 },
+    ],
+    reviews: [],
+  });
+
+  assert.deepEqual(parsed.customWorkTypes, customWorkTypes);
+  assert.deepEqual(parsed.customWorkStatuses, customWorkStatuses);
+  assert.deepEqual(parsed.customChannels, customChannels);
+  assert.equal(parsed.queues[0].workStatus, 'finished');
+  assert.equal(parsed.queues[1].workStatus, 'legacy_status');
+
+  const summary = calculateRevenueSummary(parsed.queues, parsed.customWorkStatuses);
+  assert.equal(summary.completedCount, 1);
+  assert.equal(summary.activeCount, 1);
+
+  const restored = normalizePortalResponse(serializePortalForCache(parsed));
+  assert.deepEqual(restored.customWorkTypes, customWorkTypes);
+  assert.deepEqual(restored.customWorkStatuses, customWorkStatuses);
+  assert.deepEqual(restored.customChannels, customChannels);
 });

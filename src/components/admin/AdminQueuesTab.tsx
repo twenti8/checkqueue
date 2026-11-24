@@ -12,33 +12,46 @@ import {
 import {
   PAYMENT_STATUS_META,
   THAI_MONTHS,
-  WORK_STATUS_META,
 } from '../../constants/themes';
-import type { PaymentStatus, QueueItem, WorkStatus } from '../../types/portal';
+import type {
+  PaymentStatus,
+  QueueItem,
+  WorkStatus,
+  WorkStatusOption,
+} from '../../types/portal';
 import {
   calculateRevenueSummary,
   derivePaymentStatus,
   filterQueues,
   formatBaht,
   reorderQueueList,
+  resolveWorkStatusDisplay,
 } from '../../utils/queueLogic';
 
 interface AdminQueuesTabProps {
   queues: QueueItem[];
+  customWorkTypes: string[];
+  customWorkStatuses: WorkStatusOption[];
+  customChannels: string[];
   onSaveQueue: (queue: QueueItem) => Promise<void>;
   onDeleteQueue: (id: string) => Promise<void>;
   onSyncQueues: (queues: QueueItem[]) => Promise<void>;
 }
 
-function createEmptyQueue(existing: QueueItem[]): QueueItem {
+function createEmptyQueue(
+  existing: QueueItem[],
+  workTypes: string[],
+  workStatuses: WorkStatusOption[],
+  channels: string[]
+): QueueItem {
   const now = new Date();
   const nextNum = existing.length + 1;
   return {
     id: `q-${Date.now()}`,
     queueNo: `Q-${String(nextNum).padStart(3, '0')}`,
     clientName: '',
-    workType: 'Chibi Full Color',
-    channel: 'X (Twitter)',
+    workType: workTypes[0] || 'งานทั่วไป',
+    channel: channels[0] || 'LINE',
     details: '',
     fullPrice: 500,
     paidAmount: 0,
@@ -46,7 +59,7 @@ function createEmptyQueue(existing: QueueItem[]): QueueItem {
     year: now.getFullYear(),
     deadline: '',
     paymentStatus: 'unpaid',
-    workStatus: 'waiting',
+    workStatus: workStatuses[0]?.id || 'waiting',
     isRush: false,
     sortOrder: nextNum,
   };
@@ -54,6 +67,9 @@ function createEmptyQueue(existing: QueueItem[]): QueueItem {
 
 export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
   queues,
+  customWorkTypes,
+  customWorkStatuses,
+  customChannels,
   onSaveQueue,
   onDeleteQueue,
   onSyncQueues,
@@ -65,7 +81,10 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const summary = useMemo(() => calculateRevenueSummary(queues), [queues]);
+  const summary = useMemo(
+    () => calculateRevenueSummary(queues, customWorkStatuses),
+    [queues, customWorkStatuses]
+  );
   const filteredQueues = useMemo(
     () => filterQueues(queues, { query: search, workStatus: workFilter }),
     [queues, search, workFilter]
@@ -73,7 +92,9 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
 
   const openNewModal = () => {
     setFormError('');
-    setEditingQueue(createEmptyQueue(queues));
+    setEditingQueue(
+      createEmptyQueue(queues, customWorkTypes, customWorkStatuses, customChannels)
+    );
   };
 
   const openEditModal = (item: QueueItem) => {
@@ -114,8 +135,8 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
         ...editingQueue,
         queueNo: editingQueue.queueNo.trim(),
         clientName: editingQueue.clientName.trim(),
-        workType: editingQueue.workType.trim() || 'Commission',
-        channel: editingQueue.channel.trim() || '-',
+        workType: editingQueue.workType.trim() || customWorkTypes[0] || 'งานทั่วไป',
+        channel: editingQueue.channel.trim() || customChannels[0] || '-',
         fullPrice: Number(editingQueue.fullPrice) || 0,
         paidAmount: Number(editingQueue.paidAmount) || 0,
         month: Number(editingQueue.month) || new Date().getMonth() + 1,
@@ -213,11 +234,11 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
             className="rounded-xl border border-[var(--portal-border)] bg-[var(--portal-surface)] px-3 py-2 text-sm text-[var(--portal-ink)]"
           >
             <option value="all">ทุกสถานะงาน</option>
-            <option value="waiting">รอคิว</option>
-            <option value="sketch">ร่างภาพ</option>
-            <option value="lineart">ตัดเส้น</option>
-            <option value="coloring">ลงสี</option>
-            <option value="done">เสร็จสิ้น</option>
+            {customWorkStatuses.map((status) => (
+              <option key={status.id} value={status.id}>
+                {status.label}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -269,7 +290,7 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
               </thead>
               <tbody className="divide-y divide-[var(--portal-border)]">
                 {filteredQueues.map((q, idx) => {
-                  const workMeta = WORK_STATUS_META[q.workStatus];
+                  const workMeta = resolveWorkStatusDisplay(q.workStatus, customWorkStatuses);
                   const payMeta = PAYMENT_STATUS_META[q.paymentStatus];
                   return (
                     <tr
@@ -344,8 +365,12 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
                       </td>
                       <td className="px-4 py-3 align-middle">
                         <span
-                          className="text-xs font-semibold"
-                          style={{ color: workMeta.color }}
+                          className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap"
+                          style={{
+                            backgroundColor: workMeta.palette.bg,
+                            color: workMeta.palette.text,
+                            borderColor: workMeta.palette.border,
+                          }}
                         >
                           {workMeta.label}
                         </span>
@@ -443,7 +468,7 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
                     required
                     value={editingQueue.clientName}
                     onChange={(e) => handleFieldChange('clientName', e.target.value)}
-                    placeholder="เช่น น้องมิ้นท์ หรือ @mint_art"
+                    placeholder="เช่น คุณมิ้นท์ หรือ @client_name"
                     className="mt-1 w-full rounded-xl border border-[var(--portal-border)] bg-[var(--portal-surface-alt)] px-3 py-2 text-sm text-[var(--portal-ink)]"
                   />
                 </div>
@@ -454,27 +479,47 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
                   <label htmlFor="q-worktype" className="block text-xs font-medium text-[var(--portal-ink)]">
                     ประเภทงาน
                   </label>
-                  <input
+                  <select
                     id="q-worktype"
-                    type="text"
                     value={editingQueue.workType}
                     onChange={(e) => handleFieldChange('workType', e.target.value)}
-                    placeholder="เช่น Chibi Full Color, Bust-Up"
                     className="mt-1 w-full rounded-xl border border-[var(--portal-border)] bg-[var(--portal-surface-alt)] px-3 py-2 text-sm text-[var(--portal-ink)]"
-                  />
+                  >
+                    {editingQueue.workType &&
+                      !customWorkTypes.includes(editingQueue.workType) && (
+                        <option value={editingQueue.workType}>
+                          {editingQueue.workType} (รายการเดิม)
+                        </option>
+                      )}
+                    {customWorkTypes.map((typeOption) => (
+                      <option key={typeOption} value={typeOption}>
+                        {typeOption}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label htmlFor="q-channel" className="block text-xs font-medium text-[var(--portal-ink)]">
                     ช่องทางสั่งงาน
                   </label>
-                  <input
+                  <select
                     id="q-channel"
-                    type="text"
                     value={editingQueue.channel}
                     onChange={(e) => handleFieldChange('channel', e.target.value)}
-                    placeholder="เช่น X (Twitter), LINE, Facebook"
                     className="mt-1 w-full rounded-xl border border-[var(--portal-border)] bg-[var(--portal-surface-alt)] px-3 py-2 text-sm text-[var(--portal-ink)]"
-                  />
+                  >
+                    {editingQueue.channel &&
+                      !customChannels.includes(editingQueue.channel) && (
+                        <option value={editingQueue.channel}>
+                          {editingQueue.channel} (ช่องทางเดิม)
+                        </option>
+                      )}
+                    {customChannels.map((chOption) => (
+                      <option key={chOption} value={chOption}>
+                        {chOption}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -487,7 +532,7 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
                   rows={2}
                   value={editingQueue.details}
                   onChange={(e) => handleFieldChange('details', e.target.value)}
-                  placeholder="บรีฟงาน โทนสี หรือหมายเหตุเพิ่มเติม"
+                  placeholder="ระบุรายละเอียดงาน ข้อกำหนดเพิ่มเติม หรือหมายเหตุสำคัญ"
                   className="mt-1 w-full rounded-xl border border-[var(--portal-border)] bg-[var(--portal-surface-alt)] px-3 py-2 text-sm text-[var(--portal-ink)]"
                 />
               </div>
@@ -608,11 +653,17 @@ export const AdminQueuesTab: React.FC<AdminQueuesTabProps> = ({
                     }
                     className="mt-1 w-full rounded-xl border border-[var(--portal-border)] bg-[var(--portal-surface-alt)] px-3 py-2 text-sm text-[var(--portal-ink)]"
                   >
-                    <option value="waiting">รอคิว</option>
-                    <option value="sketch">ร่างภาพ</option>
-                    <option value="lineart">ตัดเส้น</option>
-                    <option value="coloring">ลงสี</option>
-                    <option value="done">เสร็จสิ้น</option>
+                    {editingQueue.workStatus &&
+                      !customWorkStatuses.some((s) => s.id === editingQueue.workStatus) && (
+                        <option value={editingQueue.workStatus}>
+                          {editingQueue.workStatus} (สถานะเดิม)
+                        </option>
+                      )}
+                    {customWorkStatuses.map((status) => (
+                      <option key={status.id} value={status.id}>
+                        {status.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

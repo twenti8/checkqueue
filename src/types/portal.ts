@@ -1,9 +1,19 @@
-export type WorkStatus =
-  | 'waiting'
-  | 'sketch'
-  | 'lineart'
-  | 'coloring'
-  | 'done';
+export type WorkStatus = string;
+
+export type StatusColorId =
+  | 'gray'
+  | 'yellow'
+  | 'sky'
+  | 'purple'
+  | 'pink'
+  | 'orange'
+  | 'green';
+
+export interface WorkStatusOption {
+  id: string;
+  label: string;
+  color: StatusColorId;
+}
 
 export type PaymentStatus = 'unpaid' | 'deposit' | 'paid';
 
@@ -118,4 +128,7 @@ export interface PortalData {
   images: PortalImages;
   queues: QueueItem[];
   reviews: ReviewItem[];
+  customWorkTypes: string[];
+  customWorkStatuses: WorkStatusOption[];
+  customChannels: string[];
 }

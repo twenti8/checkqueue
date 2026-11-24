@@ -23,6 +23,7 @@ import { AdminQueuesTab } from './AdminQueuesTab';
 import { AdminReviewsTab } from './AdminReviewsTab';
 import { AdminSettingsTab } from './AdminSettingsTab';
 import { AdminThemeTab } from './AdminThemeTab';
+import type { WorkflowOptionsPayload } from './AdminWorkflowOptionsCard';
 
 type AdminTabId = 'queues' | 'reviews' | 'theme' | 'images' | 'settings';
 
@@ -49,6 +50,7 @@ interface AdminDashboardProps {
   }) => Promise<void>;
   onSaveImageSlot: (key: ImageSlotKey, dataUrl: string) => Promise<void>;
   onSaveProfile: (nextProfile: ProfileSettings, successLabel: string) => Promise<void>;
+  onSaveWorkflowOptions: (payload: WorkflowOptionsPayload) => Promise<void>;
   onNotifyError: (message: string) => void;
 }
 
@@ -75,6 +77,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onSaveThemeSettings,
   onSaveImageSlot,
   onSaveProfile,
+  onSaveWorkflowOptions,
   onNotifyError,
 }) => {
   const [activeTab, setActiveTab] = useState<AdminTabId>('queues');
@@ -163,6 +166,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {activeTab === 'queues' && (
           <AdminQueuesTab
             queues={data.queues}
+            customWorkTypes={data.customWorkTypes}
+            customWorkStatuses={data.customWorkStatuses}
+            customChannels={data.customChannels}
             onSaveQueue={onSaveQueue}
             onDeleteQueue={onDeleteQueue}
             onSyncQueues={onSyncQueues}
@@ -198,7 +204,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {activeTab === 'settings' && (
           <AdminSettingsTab
             profile={data.profile}
+            customWorkTypes={data.customWorkTypes}
+            customWorkStatuses={data.customWorkStatuses}
+            customChannels={data.customChannels}
             onSaveProfile={onSaveProfile}
+            onSaveWorkflowOptions={onSaveWorkflowOptions}
           />
         )}
       </main>

@@ -1,16 +1,33 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CreditCard, KeyRound, Plus, Save, Store, Trash2 } from 'lucide-react';
-import type { BankInfo, ProfileSettings, SocialLink } from '../../types/portal';
+import type {
+  BankInfo,
+  ProfileSettings,
+  SocialLink,
+  WorkStatusOption,
+} from '../../types/portal';
 import { generatePromptPayPayload } from '../../utils/promptpay';
+import {
+  AdminWorkflowOptionsCard,
+  type WorkflowOptionsPayload,
+} from './AdminWorkflowOptionsCard';
 
 interface AdminSettingsTabProps {
   profile: ProfileSettings;
+  customWorkTypes: string[];
+  customWorkStatuses: WorkStatusOption[];
+  customChannels: string[];
   onSaveProfile: (nextProfile: ProfileSettings, successLabel: string) => Promise<void>;
+  onSaveWorkflowOptions: (payload: WorkflowOptionsPayload) => Promise<void>;
 }
 
 export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
   profile,
+  customWorkTypes,
+  customWorkStatuses,
+  customChannels,
   onSaveProfile,
+  onSaveWorkflowOptions,
 }) => {
   const [bankForm, setBankForm] = useState<BankInfo>(profile.bankInfo);
   const [storeForm, setStoreForm] = useState<ProfileSettings>(profile);
@@ -106,6 +123,14 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Dynamic Work Types, Ordered Work Statuses & Order Channels */}
+      <AdminWorkflowOptionsCard
+        customWorkTypes={customWorkTypes}
+        customWorkStatuses={customWorkStatuses}
+        customChannels={customChannels}
+        onSaveWorkflowOptions={onSaveWorkflowOptions}
+      />
+
       {/* Bank Account & Automatic PromptPay QR Settings (NO QR Image Upload) */}
       <form
         onSubmit={handleSaveBankInfo}

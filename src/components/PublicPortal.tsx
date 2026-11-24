@@ -12,13 +12,13 @@ import {
   DEFAULT_ASSETS,
   PAYMENT_STATUS_META,
   THAI_MONTHS,
-  WORK_STATUS_META,
 } from '../constants/themes';
 import type { PortalData, WorkStatus } from '../types/portal';
 import {
   calculateRevenueSummary,
   filterQueues,
   formatBaht,
+  resolveWorkStatusDisplay,
   searchLoyaltyByClient,
 } from '../utils/queueLogic';
 import { PortfolioCarousel3D } from './PortfolioCarousel3D';
@@ -32,15 +32,6 @@ interface PublicPortalProps {
   onOpenAdminLogin: () => void;
 }
 
-const STATUS_TABS: Array<{ id: WorkStatus | 'all'; label: string }> = [
-  { id: 'all', label: 'ทั้งหมด' },
-  { id: 'waiting', label: 'รอคิว' },
-  { id: 'sketch', label: 'ร่างภาพ' },
-  { id: 'lineart', label: 'ตัดเส้น' },
-  { id: 'coloring', label: 'ลงสี' },
-  { id: 'done', label: 'เสร็จสิ้น' },
-];
-
 export const PublicPortal: React.FC<PublicPortalProps> = ({
   data,
   isLoading,
@@ -49,7 +40,7 @@ export const PublicPortal: React.FC<PublicPortalProps> = ({
   onOpenPayment,
   onOpenAdminLogin,
 }) => {
-  const { profile, images, queues, reviews } = data;
+  const { profile, images, queues, reviews, customWorkStatuses } = data;
 
   const [queueSearch, setQueueSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<WorkStatus | 'all'>('all');
@@ -57,7 +48,27 @@ export const PublicPortal: React.FC<PublicPortalProps> = ({
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [coverFailed, setCoverFailed] = useState(false);
 
-  const summary = useMemo(() => calculateRevenueSummary(queues), [queues]);
+  const statusTabs = useMemo(
+    () => [
+      { id: 'all' as const, label: 'ทั้งหมด' },
+      ...customWorkStatuses.map((s) => ({ id: s.id, label: s.label })),
+    ],
+    [customWorkStatuses]
+  );
+
+  useEffect(() => {
+    if (
+      statusFilter !== 'all' &&
+      !customWorkStatuses.some((s) => s.id === statusFilter)
+    ) {
+      setStatusFilter('all');
+    }
+  }, [statusFilter, customWorkStatuses]);
+
+  const summary = useMemo(
+    () => calculateRevenueSummary(queues, customWorkStatuses),
+    [queues, customWorkStatuses]
+  );
 
   const filteredQueues = useMemo(
     () =>
@@ -390,13 +401,13 @@ export const PublicPortal: React.FC<PublicPortalProps> = ({
             </div>
           </div>
 
-          {/* Interactive Status Filter Tabs */}
+          {/* Interactive Status Filter Tabs (Dynamic from Admin customWorkStatuses) */}
           <div
             role="tablist"
             aria-label="กรองตามสถานะงาน"
             className="mt-5 flex flex-wrap items-center gap-1.5 rounded-xl bg-[var(--portal-surface-alt)] p-1.5"
           >
-            {STATUS_TABS.map((tab) => {
+            {statusTabs.map((tab) => {
               const active = statusFilter === tab.id;
               return (
                 <button
@@ -470,7 +481,10 @@ export const PublicPortal: React.FC<PublicPortalProps> = ({
                     </thead>
                     <tbody className="divide-y divide-[var(--portal-border)]">
                       {filteredQueues.map((q) => {
-                        const workMeta = WORK_STATUS_META[q.workStatus];
+                        const workMeta = resolveWorkStatusDisplay(
+                          q.workStatus,
+                          customWorkStatuses
+                        );
                         const payMeta = PAYMENT_STATUS_META[q.paymentStatus];
                         return (
                           <tr
@@ -529,26 +543,41 @@ export const PublicPortal: React.FC<PublicPortalProps> = ({
                               </p>
                             </td>
                             <td className="px-5 py-4 align-top">
-                              <p
-                                className="text-xs font-semibold"
-                                style={{ color: workMeta.color }}
-                              >
-                                {workMeta.label} ({workMeta.step}/5)
-                              </p>
-                              <div className="mt-1.5 flex w-28 gap-1" aria-hidden="true">
-                                {[1, 2, 3, 4, 5].map((step) => (
-                                  <span
-                                    key={step}
-                                    className="h-1.5 flex-1 rounded-full"
+                              <div className="flex items-center justify-between gap-2">
+                                <span
+                                  className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap"
+                                  style={{
+                                    backgroundColor: workMeta.palette.bg,
+                                    color: workMeta.palette.text,
+                                    borderColor: workMeta.palette.border,
+                                  }}
+                                >
+                                  {workMeta.label}
+                                </span>
+                                {workMeta.isKnown && (
+                                  <span className="font-mono-num text-[11px] font-medium text-[var(--portal-muted)]">
+                                    {workMeta.progressPercent}%
+                                  </span>
+                                )}
+                              </div>
+                              {workMeta.isKnown && (
+                                <div
+                                  role="progressbar"
+                                  aria-label={`ความคืบหน้า ${workMeta.label}`}
+                                  aria-valuenow={workMeta.progressPercent}
+                                  aria-valuemin={0}
+                                  aria-valuemax={100}
+                                  className="mt-2 h-1.5 w-32 overflow-hidden rounded-full bg-[var(--portal-border)]/70"
+                                >
+                                  <div
+                                    className="h-full rounded-full transition-all duration-300"
                                     style={{
-                                      backgroundColor:
-                                        step <= workMeta.step
-                                          ? workMeta.color
-                                          : 'var(--portal-border)',
+                                      width: `${workMeta.progressPercent}%`,
+                                      backgroundColor: workMeta.palette.bar,
                                     }}
                                   />
-                                ))}
-                              </div>
+                                </div>
+                              )}
                             </td>
                           </tr>
                         );
@@ -560,10 +589,13 @@ export const PublicPortal: React.FC<PublicPortalProps> = ({
                 {/* Mobile List */}
                 <div className="divide-y divide-[var(--portal-border)] md:hidden">
                   {filteredQueues.map((q) => {
-                    const workMeta = WORK_STATUS_META[q.workStatus];
+                    const workMeta = resolveWorkStatusDisplay(
+                      q.workStatus,
+                      customWorkStatuses
+                    );
                     const payMeta = PAYMENT_STATUS_META[q.paymentStatus];
                     return (
-                      <div key={q.id} className="space-y-2 p-4">
+                      <div key={q.id} className="space-y-2.5 p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <div className="flex items-center gap-2 text-xs text-[var(--portal-muted)]">
@@ -584,8 +616,12 @@ export const PublicPortal: React.FC<PublicPortalProps> = ({
                             </p>
                           </div>
                           <span
-                            className="text-xs font-semibold"
-                            style={{ color: workMeta.color }}
+                            className="inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold"
+                            style={{
+                              backgroundColor: workMeta.palette.bg,
+                              color: workMeta.palette.text,
+                              borderColor: workMeta.palette.border,
+                            }}
                           >
                             {workMeta.label}
                           </span>
@@ -594,6 +630,34 @@ export const PublicPortal: React.FC<PublicPortalProps> = ({
                           {q.workType}
                           {q.details ? ` — ${q.details}` : ''}
                         </p>
+                        {workMeta.isKnown && (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[11px] text-[var(--portal-muted)]">
+                              <span>
+                                ขั้นที่ {workMeta.step}/{workMeta.totalSteps}
+                              </span>
+                              <span className="font-mono-num font-medium">
+                                {workMeta.progressPercent}%
+                              </span>
+                            </div>
+                            <div
+                              role="progressbar"
+                              aria-label={`ความคืบหน้า ${workMeta.label}`}
+                              aria-valuenow={workMeta.progressPercent}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--portal-border)]/70"
+                            >
+                              <div
+                                className="h-full rounded-full transition-all duration-300"
+                                style={{
+                                  width: `${workMeta.progressPercent}%`,
+                                  backgroundColor: workMeta.palette.bar,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
                         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--portal-muted)]">
                           <span>กำหนดส่ง: {q.deadline || '-'}</span>
                           <span style={{ color: payMeta.color }} className="font-medium">

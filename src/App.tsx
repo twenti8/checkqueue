@@ -5,10 +5,14 @@ import { BackgroundEffects } from './components/BackgroundEffects';
 import { PaymentModal } from './components/PaymentModal';
 import { PublicPortal } from './components/PublicPortal';
 import {
+  DEFAULT_CHANNELS,
   DEFAULT_CUSTOM_THEME,
   DEFAULT_PROFILE,
+  DEFAULT_WORK_STATUSES,
+  DEFAULT_WORK_TYPES,
   PASTEL_THEMES,
 } from './constants/themes';
+import type { WorkflowOptionsPayload } from './components/admin/AdminWorkflowOptionsCard';
 import {
   deleteQueueFromSheet,
   deleteReviewFromSheet,
@@ -43,6 +47,9 @@ const INITIAL_PORTAL_DATA: PortalData = {
   images: {},
   queues: [],
   reviews: [],
+  customWorkTypes: DEFAULT_WORK_TYPES,
+  customWorkStatuses: DEFAULT_WORK_STATUSES,
+  customChannels: DEFAULT_CHANNELS,
 };
 
 export default function App() {
@@ -300,6 +307,26 @@ export default function App() {
     }
   };
 
+  // Custom Work Types, Ordered Work Statuses & Order Channels Action
+  const handleSaveWorkflowOptions = async (payload: WorkflowOptionsPayload) => {
+    try {
+      await saveSettingsToSheet({
+        customWorkTypes: payload.customWorkTypes,
+        customWorkStatuses: payload.customWorkStatuses,
+        customChannels: payload.customChannels,
+      });
+      commitPortalData((prev) => ({
+        ...prev,
+        customWorkTypes: payload.customWorkTypes,
+        customWorkStatuses: payload.customWorkStatuses,
+        customChannels: payload.customChannels,
+      }));
+      showToast('บันทึกตัวเลือกหมวดหมู่งาน ขั้นตอน และช่องทางเรียบร้อยแล้ว');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'บันทึกตัวเลือกไม่สำเร็จ', 'error');
+    }
+  };
+
   const handleOpenAdmin = () => {
     if (isAdminAuthenticated) {
       setViewMode('admin');
@@ -352,6 +379,7 @@ export default function App() {
           onSaveThemeSettings={handleSaveThemeSettings}
           onSaveImageSlot={handleSaveImageSlot}
           onSaveProfile={handleSaveProfile}
+          onSaveWorkflowOptions={handleSaveWorkflowOptions}
           onNotifyError={(msg) => showToast(msg, 'error')}
         />
       ) : (
